@@ -1,0 +1,149 @@
+@import "tailwindcss";
+
+@theme {
+    --color-cream: #F2F6F7;
+    --color-sage-50: #F2F6F7;
+    /* Tally Ivory Bg */
+    --color-sage-100: #E8EDED;
+    /* Light UI Border */
+    --color-sage-200: #D1DBDB;
+    /* Medium UI Border */
+    --color-sage-300: #99BDBB;
+    /* Soft Teal */
+    --color-sage-400: #66A2A0;
+    /* Muted Teal */
+    --color-sage-500: #00847D;
+    /* Tally Primary Teal */
+    --color-sage-600: #007670;
+    /* Darker Teal */
+    --color-sage-700: #006863;
+    /* Deep Teal */
+    --color-sage-800: #00847D;
+    /* Using Primary Teal for Buttons */
+    --color-sage-900: #1C2B39;
+    /* Tally Dark Charcoal/Navy */
+}
+
+@media print {
+    @page {
+        margin: 10mm;
+    }
+
+    html,
+    body {
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+        margin: 0 !important;
+        padding: 0 !important;
+        height: auto !important;
+        overflow: visible !important;
+    }
+
+    /* Hide Layout Elements */
+    aside,
+    header,
+    nav,
+    button,
+    footer,
+    a,
+    .print\:hidden {
+        display: none !important;
+    }
+
+    /* Thermal Label Styling - Optimized for TSC TE244 */
+    .thermal-label {
+        width: 100mm !important;
+        height: 50mm !important;
+        min-height: 50mm !important;
+        max-height: 50mm !important;
+        overflow: hidden !important;
+        page-break-inside: avoid !important;
+        page-break-after: always !important;
+        margin: 0 !important;
+        padding: 1.5mm 3mm !important;
+        box-sizing: border-box !important;
+        display: flex !important;
+        flex-direction: column !important;
+        background: white !important;
+        color: black !important;
+        position: relative !important;
+    }
+
+    /* Single Print Isolation Mode */
+    body.single-print-mode>*:not(.printing-this-container) {
+        display: none !important;
+    }
+
+    .single-print-mode .thermal-label-container>*:not(.printing-this) {
+        display: none !important;
+    }
+
+    .single-print-mode .printing-this {
+        display: block !important;
+        page-break-after: avoid !important;
+    }
+
+    /* Force single column layout for labels and remove gaps */
+    .thermal-label-container {
+        display: block !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        gap: 0 !important;
+        border: none !important;
+    }
+
+    .thermal-label-container>div {
+        margin: 0 !important;
+        padding: 0 !important;
+        page-break-inside: avoid !important;
+        border: none !important;
+    }
+
+    /* Reduce spacing in print mode */
+    .thermal-label * {
+        line-height: 1.1 !important;
+    }
+}
+
+@keyframes scan {
+    0% {
+        top: 0;
+        opacity: 0;
+    }
+
+    10% {
+        opacity: 1;
+    }
+
+    90% {
+        opacity: 1;
+    }
+
+    100% {
+        top: 100%;
+        opacity: 0;
+    }
+}
+
+@media screen {
+
+    /* Glassmorphism Light Theme Overrides (For Silver Background) */
+
+    .bg-white,
+    .bg-sage-50,
+    .bg-cream,
+    .bg-sage-100 {
+        background-color: rgba(255, 255, 255, 0.45) !important;
+        backdrop-filter: blur(16px) !important;
+        -webkit-backdrop-filter: blur(16px) !important;
+        border: 1px solid rgba(255, 255, 255, 0.6) !important;
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05) !important;
+    }
+
+    /* Keep Sidebar dark for contrast against silver */
+    .bg-sage-900 {
+        background-color: rgba(15, 23, 42, 0.85) !important;
+        backdrop-filter: blur(20px) !important;
+        border-right-color: rgba(255, 255, 255, 0.1) !important;
+    }
+}
