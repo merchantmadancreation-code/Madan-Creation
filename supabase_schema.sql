@@ -359,7 +359,10 @@ BEGIN
         new.email, 
         new.raw_user_meta_data->>'full_name', 
         CASE WHEN is_first_user THEN 'admin' ELSE 'viewer' END
-    );
+    )
+    ON CONFLICT (id) DO UPDATE SET
+        email = EXCLUDED.email,
+        full_name = EXCLUDED.full_name;
     RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -461,3 +464,31 @@ GRANT ALL ON carton_items TO anon, authenticated, service_role;
 NOTIFY pgrst, 'reload schema';
 
 SELECT 'Madan Creation ERP Schema v2.0 successfully integrated!' as result;
+
+-- 9. DPR MODULE
+CREATE TABLE IF NOT EXISTS dpr_logs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    order_no TEXT,
+    style_id UUID REFERENCES styles(id),
+    buyer_id UUID REFERENCES buyers(id),
+    production_stage TEXT,
+    line_id UUID REFERENCES production_lines(id),
+    responsible_staff TEXT,
+    machine_group TEXT,
+    bundle_start TEXT,
+    planned_target INTEGER,
+    actual_produced INTEGER,
+    defects_count INTEGER DEFAULT 0,
+    efficiency NUMERIC,
+    report_date DATE DEFAULT CURRENT_DATE,
+    status TEXT DEFAULT 'Posted'
+);
+
+-- Enable RLS
+ALTER TABLE dpr_logs ENABLE ROW LEVEL SECURITY;
+
+-- Policies
+CREATE POLICY "Allow all for authenticated" ON dpr_logs
+    FOR ALL USING (auth.role() = 'authenticated')
+    WITH CHECK (auth.role() = 'authenticated');

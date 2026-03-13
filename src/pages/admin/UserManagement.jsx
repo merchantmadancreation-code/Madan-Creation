@@ -27,17 +27,78 @@ const UserManagement = () => {
         if (error) {
             console.error('Error fetching users:', error);
         } else {
-            setUsers(data);
+            // Sort by creation date (oldest first) to assign stable IDs
+            const sorted = [...data].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+            const withIDs = data.map(user => {
+                const index = sorted.findIndex(u => u.id === user.id);
+                const seq = String(index + 1).padStart(2, '0');
+                return {
+                    ...user,
+                    display_id: `MC2026${seq}`,
+                    username: user.email.split('@')[0]
+                };
+            });
+            setUsers(withIDs);
         }
         setLoading(false);
     };
 
-    const handleInvite = async (e) => {
+    const handleAddUser = async (e) => {
         e.preventDefault();
+        setLoading(true);
         setError(null);
         setSuccess(null);
-        setShowInstructions(true);
-        setIsAdding(false);
+
+        try {
+            // 0. Preliminary Check - Check if user exists in the local list
+            const existingUser = users.find(u => u.email.toLowerCase() === formData.email.toLowerCase());
+            if (existingUser) {
+                throw new Error(`A user with email ${formData.email} already exists.`);
+            }
+
+            // 1. Create the Auth User
+            const { data: authData, error: authError } = await supabase.auth.signUp({
+                email: formData.email,
+                password: formData.password,
+                options: {
+                    data: {
+                        full_name: formData.full_name,
+                    }
+                }
+            });
+
+            if (authError) {
+                console.error("Auth Sign-up Error:", authError);
+                throw authError;
+            }
+
+            if (authData?.user) {
+                // 2. Wait a brief moment for the DB trigger to create the profile
+                // Then use upsert to be safe
+                const { error: roleError } = await supabase
+                    .from('profiles')
+                    .upsert({ 
+                        id: authData.user.id,
+                        email: formData.email,
+                        full_name: formData.full_name,
+                        role: formData.role 
+                    });
+
+                if (roleError) {
+                    console.error("Profile Update Error:", roleError);
+                    // Don't throw here if user was at least created in Auth
+                }
+
+                setSuccess(`User ${formData.full_name} created successfully! They can now log in.`);
+                setIsAdding(false);
+                setFormData({ email: '', password: '', full_name: '', role: 'viewer' });
+                fetchUsers();
+            }
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const copySignupLink = () => {
@@ -127,9 +188,9 @@ const UserManagement = () => {
                         <UserPlus size={20} className="text-sage-500" />
                         <h3 className="font-bold">New User Invitation</h3>
                     </div>
-                    <form onSubmit={handleInvite} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <form onSubmit={handleAddUser} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div className="space-y-1">
-                            <label className="text-xs font-bold text-sage-500 uppercase">Full Name</label>
+                            <label className="text-xs font-bold text-sage-500 uppercase">Employee Name</label>
                             <input
                                 type="text"
                                 required
@@ -163,13 +224,30 @@ const UserManagement = () => {
                                 <option value="admin">Admin</option>
                             </select>
                         </div>
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-sage-500 uppercase">Set Password</label>
+                            <input
+                                type="password"
+                                required
+                                minLength={6}
+                                value={formData.password}
+                                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                className="w-full bg-sage-50 border border-sage-100 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-sage-500 outline-none transition-all"
+                                placeholder="Min. 6 characters"
+                            />
+                        </div>
                         <div className="md:col-span-3">
                             <button
                                 type="submit"
-                                className="bg-sage-800 text-white px-6 py-2 rounded-lg font-bold text-sm hover:bg-sage-900 transition-all flex items-center gap-2"
+                                disabled={loading}
+                                className="bg-sage-800 text-white px-6 py-2 rounded-lg font-bold text-sm hover:bg-sage-900 transition-all flex items-center gap-2 disabled:opacity-50"
                             >
-                                <Shield size={16} />
-                                Create Invitation
+                                {loading ? (
+                                    <Activity size={16} className="animate-spin" />
+                                ) : (
+                                    <Shield size={16} />
+                                )}
+                                {loading ? 'Creating User...' : 'Create User Account'}
                             </button>
                         </div>
                     </form>
@@ -247,7 +325,9 @@ const UserManagement = () => {
                 <table className="min-w-full divide-y divide-sage-100">
                     <thead className="bg-sage-50/50">
                         <tr>
-                            <th className="px-6 py-4 text-left text-xs font-bold text-sage-500 uppercase tracking-wider">User</th>
+                            <th className="px-6 py-4 text-left text-xs font-bold text-sage-500 uppercase tracking-wider">User ID</th>
+                            <th className="px-6 py-4 text-left text-xs font-bold text-sage-500 uppercase tracking-wider">User Name</th>
+                            <th className="px-6 py-4 text-left text-xs font-bold text-sage-500 uppercase tracking-wider">Employee</th>
                             <th className="px-6 py-4 text-left text-xs font-bold text-sage-500 uppercase tracking-wider">Role</th>
                             <th className="px-6 py-4 text-left text-xs font-bold text-sage-500 uppercase tracking-wider">Status</th>
                             <th className="px-6 py-4 text-left text-xs font-bold text-sage-500 uppercase tracking-wider">Joined</th>
@@ -262,14 +342,24 @@ const UserManagement = () => {
                         ) : users.map((user) => (
                             <tr key={user.id} className="hover:bg-sage-50/50 transition-colors">
                                 <td className="px-6 py-4 whitespace-nowrap">
+                                    <span className="text-xs font-black text-sage-800 font-mono bg-sage-100 px-2 py-1 rounded">
+                                        {user.display_id}
+                                    </span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                    <span className="text-xs font-bold text-sage-600">
+                                        {user.username}
+                                    </span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-full bg-sage-100 flex items-center justify-center text-sage-600 font-bold text-xs uppercase">
+                                        <div className="w-8 h-8 rounded-full bg-sage-800 flex items-center justify-center text-white font-bold text-xs uppercase shadow-sm">
                                             {user.full_name?.[0] || user.email[0]}
                                         </div>
                                         <div>
                                             <div className="text-sm font-bold text-sage-900">{user.full_name || 'No Name'}</div>
-                                            <div className="text-xs text-sage-500 flex items-center gap-1">
-                                                <Mail size={12} />
+                                            <div className="text-[10px] text-sage-500 flex items-center gap-1">
+                                                <Mail size={10} />
                                                 {user.email}
                                             </div>
                                         </div>

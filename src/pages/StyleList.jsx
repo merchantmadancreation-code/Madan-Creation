@@ -166,7 +166,7 @@ const StyleList = () => {
                         </h1>
                         <p className="text-sage-500 text-xs mt-0.5">Manage your style database and details</p>
                     </div>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-3">
                         {selectedStyles.length > 0 && (
                             <button
                                 onClick={handleBulkDelete}
@@ -223,74 +223,91 @@ const StyleList = () => {
 
             <div className="bg-white rounded-xl shadow-sm border border-sage-100 overflow-hidden">
                 <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left">
-                        <thead className="bg-sage-50 text-sage-600 uppercase text-[10px] font-bold tracking-wider">
+                    <table className="w-full text-sm text-left border-separate border-spacing-0">
+                        <thead className="bg-[#f8fafc] text-slate-500 uppercase text-[10px] font-black tracking-widest border-b border-slate-100">
                             <tr>
-                                <th className="px-6 py-4 w-10">
-                                    <input
-                                        type="checkbox"
-                                        onChange={toggleSelectAll}
-                                        checked={selectedStyles.length === filteredStyles.length && filteredStyles.length > 0}
-                                        className="rounded border-sage-300 text-sage-600 focus:ring-sage-500"
-                                    />
+                                <th className="pl-8 pr-4 py-5 w-12">
+                                    <div className="flex items-center">
+                                        <input
+                                            type="checkbox"
+                                            onChange={toggleSelectAll}
+                                            checked={selectedStyles.length === filteredStyles.length && filteredStyles.length > 0}
+                                            className="rounded-md border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4"
+                                        />
+                                    </div>
                                 </th>
-                                <th className="px-6 py-4 w-20">Image</th>
-                                <th className="px-6 py-4">Style No</th>
-                                <th className="px-6 py-4">Buyer</th>
-                                <th className="px-6 py-4">Fabric</th>
-                                <th className="px-6 py-4">Category</th>
-                                <th className="px-6 py-4">Order Type</th>
-                                <th className="px-6 py-4">Color</th>
-                                <th className="px-6 py-4">Season</th>
-                                <th className="px-6 py-4">Status</th>
-                                <th className="px-6 py-4 text-center">Actions</th>
+                                <th className="px-4 py-5 w-24">Image</th>
+                                <th className="px-4 py-5">Style Identifier</th>
+                                <th className="px-4 py-5">Buyer / Client</th>
+                                <th className="px-4 py-5">Fabric Info</th>
+                                <th className="px-4 py-5">Category</th>
+                                <th className="px-4 py-5">Order Type</th>
+                                <th className="px-4 py-5">Color</th>
+                                <th className="px-4 py-5">Season</th>
+                                <th className="px-4 py-5">Status</th>
+                                <th className="pr-8 pl-4 py-5 text-center">Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-sage-100">
+                        <tbody className="divide-y divide-slate-100">
                             {filteredStyles?.length > 0 ? (
                                 filteredStyles.map((style, index) => (
-                                    <tr key={style.id} className={clsx("hover:bg-sage-50/30 transition-colors", selectedStyles.includes(style.id) && "bg-sage-50")}>
-                                        <td className="px-6 py-3">
+                                    <tr key={style.id} className={clsx("hover:bg-slate-50/50 transition-colors group", selectedStyles.includes(style.id) && "bg-slate-50")}>
+                                        <td className="pl-8 pr-4 py-4">
                                             <input
                                                 type="checkbox"
                                                 checked={selectedStyles.includes(style.id)}
                                                 onChange={() => toggleSelect(style.id)}
-                                                className="rounded border-sage-300 text-sage-600 focus:ring-sage-500"
+                                                className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4"
                                             />
                                         </td>
-                                        <td className="px-6 py-3">
-                                            <div className="w-12 h-12 rounded-lg bg-sage-100 border border-sage-200 overflow-hidden flex items-center justify-center">
+                                        <td className="px-4 py-4">
+                                            <div className="w-14 h-14 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center rotate-3 group-hover:rotate-0 transition-transform shadow-sm">
                                                 {style.image ? (
                                                     <img src={style.image} alt={style.styleNo} className="w-full h-full object-cover" />
                                                 ) : (
-                                                    <span className="text-sage-400 opacity-50 text-xl">✂️</span>
+                                                    <span className="text-slate-400 opacity-50 text-2xl">✂️</span>
                                                 )}
                                             </div>
                                         </td>
-                                        <td className="px-6 py-3 font-medium text-sage-900">
-                                            <Link to={`/styles/${style.id}`} className="hover:text-sage-600 hover:underline">
+                                        <td className="px-4 py-4">
+                                            <Link to={`/styles/${style.id}`} className="font-black text-slate-900 group-hover:text-indigo-600 transition-colors uppercase tracking-tight">
                                                 {style.styleNo}
                                             </Link>
                                         </td>
-                                        <td className="px-6 py-3 text-sage-600">{style.buyerName}</td>
-                                        <td className="px-6 py-3 text-sage-600">
-                                            <div className="font-medium text-sage-900">{style.fabricName}</div>
-                                            <div className="text-xs text-sage-500">{style.fabricContent}</div>
-                                            <div className="text-xs text-sage-400">{style.fabricWidth}</div>
+                                        <td className="px-4 py-4">
+                                            <div className="flex flex-col">
+                                                <span className="text-xs font-black text-slate-800">{style.buyerName}</span>
+                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Studio LLP</span>
+                                            </div>
                                         </td>
-                                        <td className="px-6 py-3 text-sage-600">
-                                            <span className="text-xs px-2 py-0.5 bg-sage-50 rounded border border-sage-100">{style.category || '-'}</span>
+                                        <td className="px-4 py-4">
+                                            <div className="flex flex-col">
+                                                <div className="text-xs font-black text-slate-700">{style.fabricName}</div>
+                                                <div className="text-[10px] font-bold text-slate-400">{style.fabricContent}</div>
+                                                <div className="text-[10px] font-bold text-slate-300">{style.fabricWidth}</div>
+                                            </div>
                                         </td>
-                                        <td className="px-6 py-3 text-sage-600">
-                                            <span className="text-[10px] px-1.5 py-0.5 font-bold bg-blue-50 text-blue-700 rounded uppercase">{style.orderType || 'New'}</span>
+                                        <td className="px-4 py-4">
+                                            <span className="px-2 py-0.5 bg-slate-100 border border-slate-200 rounded text-[9px] font-black text-slate-500 uppercase">
+                                                {style.category || '-'}
+                                            </span>
                                         </td>
-                                        <td className="px-6 py-3 text-sage-600">{style.color}</td>
-                                        <td className="px-6 py-3 text-sage-600">{style.season}</td>
-                                        <td className="px-6 py-3">
+                                        <td className="px-4 py-4">
+                                            <span className="text-[9px] px-2 py-0.5 font-black bg-indigo-50 text-indigo-600 rounded-full border border-indigo-100 uppercase tracking-tighter">
+                                                {style.orderType || 'New'}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-4">
+                                            <span className="text-xs font-bold text-slate-600">{style.color}</span>
+                                        </td>
+                                        <td className="px-4 py-4 text-xs font-bold text-slate-400">
+                                            {style.season}
+                                        </td>
+                                        <td className="px-4 py-4">
                                             {editingStatusId === style.id ? (
                                                 <select
                                                     autoFocus
-                                                    className="text-[10px] px-2 py-0.5 font-bold rounded-full uppercase border bg-white outline-none focus:ring-1 focus:ring-sage-400"
+                                                    className="text-[10px] px-2 py-1 font-black rounded-lg uppercase border border-slate-200 bg-white shadow-sm outline-none focus:ring-2 focus:ring-indigo-500/20"
                                                     value={style.status || 'Active'}
                                                     onChange={(e) => handleStatusChange(style, e.target.value)}
                                                     onBlur={() => setEditingStatusId(null)}
@@ -303,30 +320,30 @@ const StyleList = () => {
                                                 <span
                                                     onClick={() => setEditingStatusId(style.id)}
                                                     className={clsx(
-                                                        "text-[10px] px-2 py-0.5 font-bold rounded-full uppercase border cursor-pointer hover:opacity-80 transition-opacity",
-                                                        style.status === 'Complete' ? "bg-blue-100 text-blue-700 border-blue-200" :
-                                                            style.status === 'Deactive' ? "bg-red-100 text-red-700 border-red-200" :
-                                                                "bg-green-100 text-green-700 border-green-200"
+                                                        "text-[9px] px-2.5 py-1 font-black rounded-full uppercase border shadow-sm cursor-pointer hover:scale-105 transition-transform",
+                                                        style.status === 'Complete' ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
+                                                            style.status === 'Deactive' ? "bg-rose-50 text-rose-600 border-rose-100" :
+                                                                "bg-amber-50 text-amber-600 border-amber-100"
                                                     )}
                                                 >
                                                     {style.status || 'Active'}
                                                 </span>
                                             )}
                                         </td>
-                                        <td className="px-6 py-3">
-                                            <div className="flex items-center justify-center gap-2">
-                                                <Link to={`/styles/${style.id}`} className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded transition-colors" title="View Details">
-                                                    <Eye className="w-4 h-4" />
+                                        <td className="pr-8 pl-4 py-4">
+                                            <div className="flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <Link to={`/styles/${style.id}`} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all" title="View Details">
+                                                    <Eye size={16} />
                                                 </Link>
-                                                <Link to={`/styles/edit/${style.id}`} className="p-1.5 text-amber-600 hover:bg-amber-50 rounded transition-colors" title="Edit">
-                                                    <Edit className="w-4 h-4" />
+                                                <Link to={`/styles/edit/${style.id}`} className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-all" title="Edit">
+                                                    <Edit size={16} />
                                                 </Link>
                                                 <button
                                                     onClick={() => handleDelete(style.id)}
-                                                    className="p-1.5 text-rose-500 hover:bg-rose-50 rounded transition-colors"
+                                                    className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all"
                                                     title="Delete"
                                                 >
-                                                    <Trash2 className="w-4 h-4" />
+                                                    <Trash2 size={16} />
                                                 </button>
                                             </div>
                                         </td>
@@ -334,10 +351,10 @@ const StyleList = () => {
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan="8" className="px-6 py-12 text-center text-sage-400">
-                                        <div className="flex flex-col items-center gap-2">
-                                            <div className="text-4xl opacity-20">✂️</div>
-                                            <span>No styles found. Create one to get started.</span>
+                                    <td colSpan="11" className="px-8 py-20 text-center">
+                                        <div className="flex flex-col items-center gap-4 text-slate-300">
+                                            <span className="text-5xl">✂️</span>
+                                            <span className="font-black text-xs uppercase tracking-widest">No styles found in system core</span>
                                         </div>
                                     </td>
                                 </tr>

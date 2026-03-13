@@ -12,6 +12,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 // Lazy Load Pages
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Login = lazy(() => import('./pages/Login'));
+const DPRWorkspace = lazy(() => import('./pages/DPRWorkspace'));
 
 // Masters
 const SupplierList = lazy(() => import('./pages/SupplierList'));
@@ -150,6 +151,7 @@ function App() {
                       <Route path="cutting/fabric-receive" element={<CuttingFabricReceiving />} />
 
                       <Route path="stitching" element={<StitchingList />} />
+                      <Route path="dpr-workspace" element={<DPRWorkspace />} />
                       <Route path="stitching/receive" element={<CuttingReceiving />} />
                       <Route path="stitching/production" element={<StitchingProduction />} />
                       <Route path="stitching/issue/new" element={<StitchingIssueForm />} />

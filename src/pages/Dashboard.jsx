@@ -112,129 +112,141 @@ const Dashboard = () => {
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="flex justify-between items-end">
-                <div>
-                    <h1 className="text-3xl font-bold text-sage-900">Dashboard</h1>
-                    <p className="text-sage-500 mt-1">System overview and key performance indicators</p>
+            <div className="flex justify-between items-start">
+                <div className="pt-2">
+                    <h1 className="text-4xl font-extrabold text-slate-950 tracking-tight">Dashboard</h1>
+                    <p className="text-teal-600 font-semibold mt-1">System overview and key performance indicators</p>
                 </div>
-                <div className="flex flex-col sm:flex-row items-center gap-3 mt-4 md:mt-0">
+                <div className="flex items-center gap-3">
                     <Link
                         to="/tna"
-                        className="w-full sm:w-auto bg-sage-800 text-white px-5 py-2.5 rounded-xl hover:bg-sage-900 flex items-center justify-center gap-2 shadow-sm hover:shadow-md transition-all border border-sage-700/50"
+                        className="bg-[#00847d] text-white px-6 py-3 rounded-xl hover:opacity-90 flex items-center gap-2 shadow-lg shadow-teal-900/10 transition-all border border-white/10"
                     >
-                        <Clock size={18} />
-                        <span className="font-bold text-sm tracking-wide">TNA</span>
+                        <Clock size={20} className="fill-white/20" />
+                        <span className="font-bold text-sm uppercase tracking-wider">TNA</span>
                     </Link>
                     <Link
                         to="/hr"
-                        className="w-full sm:w-auto bg-blue-600 text-white px-5 py-2.5 rounded-xl hover:bg-blue-700 flex items-center justify-center gap-2 shadow-sm hover:shadow-md transition-all border border-blue-500/50"
+                        className="bg-[#1d4ed8] text-white px-6 py-3 rounded-xl hover:opacity-90 flex items-center gap-2 shadow-lg shadow-blue-900/10 transition-all border border-white/10"
                     >
-                        <Users size={18} />
-                        <span className="font-bold text-sm tracking-wide">HR Module</span>
+                        <Users size={20} className="fill-white/20" />
+                        <span className="font-bold text-sm uppercase tracking-wider">HR Module</span>
                     </Link>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-5">
                 {mainStats.map((card, i) => (
                     <Link
                         key={i}
                         to={card.path}
-                        className="group bg-white p-6 rounded-xl border border-sage-100 hover:border-sage-300 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden"
+                        className="group bg-white p-5 rounded-xl border border-white/60 hover:border-teal-500/30 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 relative overflow-hidden flex flex-col items-center justify-center text-center h-32"
                     >
-                        <div className="relative z-10 text-center">
-                            <h2 className="text-[10px] font-bold text-sage-400 uppercase tracking-widest group-hover:text-sage-600 transition-colors">{card.label}</h2>
-                            <p className="text-3xl font-extrabold text-sage-900 mt-2">{card.value}</p>
-                            <p className="text-[10px] font-bold text-sage-500 mt-1 uppercase tracking-tighter opacity-70">{card.sub}</p>
+                        <div className="relative z-10">
+                            <h2 className="text-[10px] font-bold text-teal-600/60 uppercase tracking-widest leading-none mb-3">{card.label}</h2>
+                            <p className="text-4xl font-black text-slate-900 leading-none">{card.value}</p>
+                            <p className="text-[10px] font-bold text-teal-700 mt-2 uppercase tracking-tighter">{card.sub}</p>
                         </div>
-                        <div className="absolute -bottom-6 -right-6 w-16 h-16 bg-sage-50 rounded-full group-hover:bg-sage-100 transition-colors" />
+                        {/* Accent Corner */}
+                        <div className="absolute bottom-0 right-0 w-10 h-10 bg-gray-50 rounded-tl-3xl group-hover:bg-white transition-colors" />
                     </Link>
                 ))}
             </div>
 
-            <div className="mt-12 bg-white/50 p-8 rounded-3xl border border-sage-100/50">
-                <div className="flex items-center gap-3 mb-8">
-                    <div className="w-1.5 h-8 bg-sage-500 rounded-full shadow-sm shadow-sage-500/50" />
-                    <h2 className="text-xl font-bold text-sage-800">Inventory Overview</h2>
-                    <span className="text-xs font-bold text-sage-400 uppercase tracking-widest bg-sage-50 px-3 py-1 rounded-full border border-sage-100 italic">Live Data</span>
+            <div className="mt-12 bg-white/20 backdrop-blur-xl p-10 rounded-[40px] border border-white/40 shadow-xl relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-96 h-96 bg-teal-500/5 blur-[100px] pointer-events-none" />
+                <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-500/5 blur-[100px] pointer-events-none" />
+
+                <div className="flex items-center gap-4 mb-10 relative z-10">
+                    <div className="w-1.5 h-10 bg-teal-500 rounded-full shadow-lg shadow-teal-500/40" />
+                    <h2 className="text-2xl font-black text-slate-900 tracking-tight">Inventory Overview</h2>
+                    <span className="text-[10px] font-black text-teal-600 uppercase tracking-[0.2em] bg-teal-50 px-4 py-1.5 rounded-full border border-teal-100 shadow-sm">Live Data</span>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {categoryStats.map((cat, i) => (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10">
+                    {categoryStats.slice(0, 2).map((cat, i) => (
                         <Link
                             key={i}
                             to="/inventory"
-                            className="group relative overflow-hidden bg-white rounded-2xl border border-sage-100 p-6 flex items-center gap-6 hover:border-sage-500/20 hover:shadow-2xl hover:shadow-sage-900/5 transition-all"
+                            className="group relative bg-white/80 p-8 rounded-3xl border border-white shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all flex items-center gap-8"
                         >
-                            <div className={`p-4 rounded-2xl text-white ${cat.color} shadow-lg transition-all group-hover:rotate-6 flex-shrink-0`}>
-                                <cat.icon className="w-6 h-6" />
+                            <div className={`p-6 rounded-[2rem] text-white ${cat.color} shadow-2xl transition-all group-hover:scale-110 flex-shrink-0 relative overflow-hidden`}>
+                                <div className="absolute inset-0 bg-white/20 animate-pulse" />
+                                <cat.icon className="w-10 h-10 relative z-10" />
                             </div>
-                            <div className="flex-1 flex flex-col justify-center overflow-hidden">
-                                <h3 className="text-[11px] font-bold text-sage-400 uppercase tracking-wider truncate">{cat.name}</h3>
-                                <div className="flex items-baseline gap-2 mt-1">
-                                    <p className="text-2xl font-black text-sage-900 truncate">{cat.total.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</p>
-                                    <span className="text-[10px] font-bold text-sage-400 uppercase flex-shrink-0">{cat.unit}</span>
+                            <div className="flex-1 flex flex-col justify-center">
+                                <h3 className="text-xs font-black text-teal-600 uppercase tracking-widest mb-1 opacity-70">{cat.name}</h3>
+                                <div className="flex items-baseline gap-3">
+                                    <p className="text-4xl font-black text-slate-900 tracking-tight">{cat.total.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 2 })}</p>
+                                    <span className="text-xs font-black text-teal-600 uppercase tracking-widest">{cat.unit}</span>
                                 </div>
                             </div>
+                            <ArrowUpRight className="text-teal-400 group-hover:text-teal-600 transition-colors opacity-0 group-hover:opacity-100" size={24} />
                         </Link>
                     ))}
                 </div>
-
             </div>
 
             {/* Item-wise Details Section */}
-            <div className="mt-8 bg-white rounded-2xl border border-sage-100 overflow-hidden shadow-sm">
-                <div className="bg-sage-50 px-6 py-4 border-b border-sage-100 flex justify-between items-center">
-                    <h3 className="text-sm font-bold text-sage-800 uppercase tracking-wider">Item-wise Stock Details</h3>
-                    <Link to="/inventory" className="text-xs font-bold text-sage-500 hover:text-sage-800 flex items-center gap-1 transition-colors">
-                        View All <ArrowUpRight size={14} />
+            <div className="mt-16 relative z-10 pb-12">
+                <div className="px-4 py-8 flex justify-between items-end border-b border-teal-500/10 mb-8">
+                    <div>
+                        <h3 className="text-sm font-black text-teal-600 uppercase tracking-[0.3em]">Item-wise Stock Details</h3>
+                    </div>
+                    <Link to="/inventory" className="text-xs font-black text-teal-600 hover:text-teal-800 flex items-center gap-2 group transition-all bg-teal-50 px-4 py-2 rounded-lg border border-teal-100 shadow-sm">
+                        View All <ArrowUpRight size={18} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                     </Link>
                 </div>
-                <div className="overflow-x-auto max-h-[400px]">
-                    <table className="w-full text-left">
-                        <thead className="sticky top-0 bg-white border-b border-sage-100 shadow-sm z-10">
-                            <tr className="text-[10px] font-bold text-sage-400 uppercase tracking-widest">
-                                <th className="px-6 py-4">Item Name / Code</th>
-                                <th className="px-6 py-4 text-center">Category</th>
-                                <th className="px-6 py-4 text-right">Current Stock</th>
-                                <th className="px-6 py-4 text-center">Unit</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-sage-50">
-                            {itemDetails.length > 0 ? (
-                                itemDetails.map((item, idx) => (
-                                    <tr key={item.id} className="hover:bg-sage-50/50 transition-colors group">
-                                        <td className="px-6 py-4">
-                                            <div className="font-semibold text-sage-900 group-hover:text-sage-700 transition-colors">{item.name}</div>
-                                            {item.fabricCode && (
-                                                <div className="text-[10px] font-mono text-sage-400 mt-0.5">#{item.fabricCode}</div>
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4 text-center">
-                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${item.category === 'Fabric' ? 'bg-blue-50 text-blue-600' :
-                                                item.category === 'Accessories' ? 'bg-purple-50 text-purple-600' :
-                                                    'bg-gray-100 text-gray-600'
-                                                }`}>
-                                                {item.category}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-right font-black text-sage-900">
-                                            {item.currentStock.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                        </td>
-                                        <td className="px-6 py-4 text-center text-[10px] font-bold text-sage-400 uppercase tracking-wider">
-                                            {item.unit}
+                <div className="bg-white/40 backdrop-blur-md rounded-[32px] border border-white/60 overflow-hidden shadow-2xl">
+                    <div className="overflow-x-auto max-h-[600px] no-scrollbar">
+                        <table className="w-full text-left">
+                            <thead className="sticky top-0 bg-white/90 backdrop-blur-md border-b border-teal-500/10 z-10">
+                                <tr className="text-[10px] font-black text-teal-600/50 uppercase tracking-[0.2em]">
+                                    <th className="px-12 py-8">Item Name / Code</th>
+                                    <th className="px-12 py-8 text-center">Category</th>
+                                    <th className="px-12 py-8 text-right">Current Stock</th>
+                                    <th className="px-12 py-8 text-center uppercase tracking-[0.2em]">Unit</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-teal-500/5">
+                                {itemDetails.length > 0 ? (
+                                    itemDetails.map((item, idx) => (
+                                        <tr key={item.id} className="hover:bg-teal-500/5 transition-colors group">
+                                            <td className="px-12 py-6">
+                                                <div className="font-bold text-slate-900 group-hover:text-teal-700 transition-colors uppercase text-xs tracking-wider">{item.name}</div>
+                                                {item.fabricCode && (
+                                                    <div className="text-[9px] font-black text-teal-600/40 mt-1.5 flex items-center gap-1.5">
+                                                        <span className="bg-teal-50 px-1.5 py-0.5 rounded border border-teal-100">SERIAL #{item.fabricCode}</span>
+                                                    </div>
+                                                )}
+                                            </td>
+                                            <td className="px-12 py-6 text-center">
+                                                <span className={`text-[10px] font-black px-5 py-2 rounded-full border shadow-sm ${item.category === 'Fabric' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                                                    item.category === 'Accessories' ? 'bg-purple-50 text-purple-600 border-purple-100' :
+                                                        'bg-gray-50 text-gray-600 border-gray-100'
+                                                    }`}>
+                                                    {item.category}
+                                                </span>
+                                            </td>
+                                            <td className="px-12 py-6 text-right font-black text-slate-950 text-xl tracking-tighter">
+                                                {item.currentStock.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                                                <span className="text-[10px] ml-1.5 opacity-30 font-bold uppercase tracking-widest">{item.unit}</span>
+                                            </td>
+                                            <td className="px-12 py-6 text-center text-[10px] font-black text-teal-600/40 uppercase tracking-widest">
+                                                {item.unit}
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan="4" className="px-12 py-24 text-center text-teal-600/30 font-black uppercase tracking-[0.3em]">
+                                            No active stock data available.
                                         </td>
                                     </tr>
-                                ))
-                            ) : (
-                                <tr>
-                                    <td colSpan="4" className="px-6 py-12 text-center text-sage-400 font-medium">
-                                        No active stock data available.
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
