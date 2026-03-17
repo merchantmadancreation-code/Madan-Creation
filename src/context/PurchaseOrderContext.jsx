@@ -33,15 +33,18 @@ export const PurchaseOrderProvider = ({ children }) => {
     const [fabricIssues, setFabricIssues] = useState([]);
     const [cuttingOrders, setCuttingOrders] = useState([]);
     const [schemaError, setSchemaError] = useState(null);
+    const [error, setError] = useState(null);
 
     // Fetch all data on mount
     useEffect(() => {
         const fetchAllData = async () => {
             setLoading(true);
+            setError(null);
             try {
+                console.log("Fetching all ERP data...");
                 const results = await Promise.all([
                     supabase.from('suppliers').select('*').order('created_at', { ascending: true }),
-                    supabase.from('items').select('*').order('created_at', { ascending: true }),
+                    supabase.from('items').select('id, name, fabricCode, hsnCode, description, materialType, openingStock, fabricType, fabricWidth, color, fabricDesign, unit, rate, rateType, image, sku, category, brand, status').order('created_at', { ascending: true }),
                     supabase.from('purchase_orders').select('*').order('created_at', { ascending: false }),
                     supabase.from('challans').select('*').order('created_at', { ascending: false }),
                     supabase.from('outward_challans').select('*').order('created_at', { ascending: false }),
@@ -51,6 +54,13 @@ export const PurchaseOrderProvider = ({ children }) => {
                     supabase.from('fabric_issues').select('*, fabric_issue_items(*)').order('created_at', { ascending: false }),
                     supabase.from('cutting_orders').select('*, bundles(*), production_orders(order_no, styles(styleNo, buyerPO))').order('created_at', { ascending: false })
                 ]);
+
+                // Check for errors and log them
+                const errors = results.filter(r => r.error).map(r => r.error);
+                if (errors.length > 0) {
+                    console.error("Some data fetches failed:", errors);
+                    setError(`Failed to fetch: ${errors.map(e => e.message).join(', ')}`);
+                }
 
                 setSuppliers(results[0].data || []);
                 setItems(results[1].data || []);
@@ -66,10 +76,13 @@ export const PurchaseOrderProvider = ({ children }) => {
                 const { data: costingsData, error: costingsError } = await supabase.from('costings').select('*').order('created_at', { ascending: true });
                 if (!costingsError) {
                     setCostings(costingsData || []);
+                } else {
+                    console.error("Costings fetch failed:", costingsError);
                 }
 
             } catch (error) {
                 console.error("Error fetching data:", error);
+                setError(error.message);
                 if (error.message && (error.message.includes('Could not find') || error.message.includes('relation'))) {
                     setSchemaError(error.message);
                 }
@@ -588,7 +601,8 @@ export const PurchaseOrderProvider = ({ children }) => {
             materialIssues, setMaterialIssues,
             fabricIssues, addFabricIssue, updateFabricIssueStatus, deleteFabricIssue,
             cuttingOrders, setCuttingOrders,
-            schemaError, setSchemaError
+            schemaError, setSchemaError,
+            error, setError, loading
         }}>
             {children}
         </PurchaseOrderContext.Provider>
