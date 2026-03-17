@@ -4,6 +4,7 @@ import clsx from 'clsx';
 import { usePurchaseOrder } from '../context/PurchaseOrderContext';
 import { FileText, ExternalLink } from 'lucide-react';
 import { exportStyleToExcel, generateStylePDF } from '../utils/export';
+import { supabase } from '../lib/supabase';
 
 const StyleDetails = () => {
     const { id } = useParams();
@@ -12,11 +13,32 @@ const StyleDetails = () => {
     const [style, setStyle] = useState(null);
 
     useEffect(() => {
-        if (!styles) return;
-        const foundStyle = (styles || []).find(s => s.id === id);
-        if (foundStyle) {
-            setStyle(foundStyle);
-        }
+        const getStyleDetails = async () => {
+            if (!id) return;
+            
+            // Try to find in local context first for quick load
+            const foundStyle = (styles || []).find(s => s.id === id);
+            if (foundStyle && foundStyle.image) {
+                setStyle(foundStyle);
+                return;
+            }
+
+            // If not found in local context or missing image (due to selective fetch), fetch from DB
+            try {
+                const { data, error } = await supabase
+                    .from('styles')
+                    .select('*')
+                    .eq('id', id)
+                    .single();
+
+                if (error) throw error;
+                if (data) setStyle(data);
+            } catch (err) {
+                console.error("Error fetching style details:", err);
+            }
+        };
+
+        getStyleDetails();
     }, [id, styles]);
 
     if (!styles) return null; // Or some loading state

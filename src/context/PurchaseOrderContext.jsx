@@ -49,7 +49,7 @@ export const PurchaseOrderProvider = ({ children }) => {
                     supabase.from('challans').select('*').order('created_at', { ascending: false }),
                     supabase.from('outward_challans').select('*').order('created_at', { ascending: false }),
                     supabase.from('invoices').select('*').order('created_at', { ascending: false }),
-                    supabase.from('styles').select('*').order('created_at', { ascending: false }),
+                    supabase.from('styles').select('id, created_at, styleNo, buyerPO, buyerName, fabricName, fabricContent, fabricWidth, color, season, description, notes, buyerPOReceivedDate, poExpiredDate, category, section, orderType, leadTime, poExtensionDate, stitchingRate, perPcsAvg, status, buyerId, buyerPOCopy').order('created_at', { ascending: false }),
                     supabase.from('material_issues').select('*, material_issue_items(*), production_orders(styles(styleNo))').order('created_at', { ascending: false }),
                     supabase.from('fabric_issues').select('*, fabric_issue_items(*)').order('created_at', { ascending: false }),
                     supabase.from('cutting_orders').select('*, bundles(*), production_orders(order_no, styles(styleNo, buyerPO))').order('created_at', { ascending: false })
