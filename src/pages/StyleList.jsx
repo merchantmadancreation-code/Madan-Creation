@@ -1,10 +1,12 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import clsx from 'clsx';
 import { usePurchaseOrder } from '../context/PurchaseOrderContext';
 import { Plus, Search, Edit, Trash2, Eye, Upload, FileDown, Loader2, LayoutGrid, List } from 'lucide-react';
 import { exportAllStylesToExcel } from '../utils/export';
 import Papa from 'papaparse';
+
+import { supabase } from '../lib/supabase';
 
 const StyleCard = ({ style, toggleSelect, selected, handleDelete }) => {
     const [image, setImage] = useState(style.image || null);
