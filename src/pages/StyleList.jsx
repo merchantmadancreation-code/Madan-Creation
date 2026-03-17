@@ -6,6 +6,111 @@ import { Plus, Search, Edit, Trash2, Eye, Upload, FileDown, Loader2, LayoutGrid,
 import { exportAllStylesToExcel } from '../utils/export';
 import Papa from 'papaparse';
 
+const StyleCard = ({ style, toggleSelect, selected, handleDelete }) => {
+    const [image, setImage] = useState(style.image || null);
+    const [loadingImage, setLoadingImage] = useState(!style.image);
+
+    useEffect(() => {
+        const fetchImage = async () => {
+            if (style.image) return;
+            setLoadingImage(true);
+            try {
+                const { data, error } = await supabase
+                    .from('styles')
+                    .select('image')
+                    .eq('id', style.id)
+                    .single();
+                
+                if (error) throw error;
+                if (data?.image) setImage(data.image);
+            } catch (err) {
+                console.error("Error fetching style image:", err);
+            } finally {
+                setLoadingImage(false);
+            }
+        };
+
+        fetchImage();
+    }, [style.id, style.image]);
+
+    return (
+        <div className="group bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl transition-all duration-500 overflow-hidden flex flex-col">
+            <div className="relative aspect-[3/4] overflow-hidden bg-slate-50">
+                {image ? (
+                    <img src={image} alt={style.styleNo} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                ) : loadingImage ? (
+                    <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-slate-50">
+                        <Loader2 className="animate-spin text-indigo-500" size={24} />
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Loading...</span>
+                    </div>
+                ) : (
+                    <div className="w-full h-full flex items-center justify-center text-6xl opacity-20 grayscale group-hover:grayscale-0 transition-all">✂️</div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500 flex flex-col justify-end p-6">
+                    <div className="flex gap-2">
+                        <Link to={`/styles/${style.id}`} className="flex-1 bg-white/20 backdrop-blur-md border border-white/30 text-white py-2.5 rounded-2xl flex items-center justify-center gap-2 hover:bg-white hover:text-indigo-600 transition-all font-black text-[10px] uppercase tracking-widest">
+                            <Eye size={16} /> View
+                        </Link>
+                        <Link to={`/styles/edit/${style.id}`} className="p-2.5 bg-amber-500/20 backdrop-blur-md border border-amber-500/30 text-amber-500 rounded-2xl hover:bg-amber-500 hover:text-white transition-all">
+                            <Edit size={16} />
+                        </Link>
+                        <button onClick={(e) => { e.stopPropagation(); handleDelete(style.id); }} className="p-2.5 bg-rose-500/20 backdrop-blur-md border border-rose-500/30 text-rose-500 rounded-2xl hover:bg-rose-500 hover:text-white transition-all">
+                            <Trash2 size={16} />
+                        </button>
+                    </div>
+                </div>
+                <div className="absolute top-4 left-4 flex flex-col gap-2">
+                    <span className={clsx(
+                        "px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest shadow-lg border",
+                        style.status === 'Complete' ? "bg-emerald-500 text-white border-emerald-400" :
+                        style.status === 'Deactive' ? "bg-rose-500 text-white border-rose-400" :
+                        "bg-indigo-600 text-white border-indigo-500"
+                    )}>
+                        {style.status || 'Active'}
+                    </span>
+                    <span className="px-3 py-1 bg-white/90 backdrop-blur-md rounded-full text-[9px] font-black uppercase tracking-widest text-slate-600 shadow-sm border border-slate-100">
+                        {style.orderType || 'New'}
+                    </span>
+                </div>
+                {selected && (
+                    <div className="absolute top-4 right-4 w-6 h-6 bg-indigo-600 rounded-full flex items-center justify-center text-white shadow-lg border-2 border-white animate-in zoom-in-50">
+                        <div className="w-2 h-2 bg-white rounded-full"></div>
+                    </div>
+                )}
+            </div>
+            <div className="p-6 space-y-4 flex-1 flex flex-col cursor-pointer" onClick={() => toggleSelect(style.id)}>
+                <div className="space-y-1">
+                    <div className="flex justify-between items-start">
+                        <h3 className="font-black text-slate-900 group-hover:text-indigo-600 transition-colors uppercase tracking-tight text-lg leading-none">
+                            {style.styleNo}
+                        </h3>
+                        <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest whitespace-nowrap ml-2">
+                            {style.category || 'General'}
+                        </span>
+                    </div>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-tighter">{style.buyerName || 'Unassigned Buyer'}</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 pt-2">
+                    <div className="bg-slate-50 p-2.5 rounded-2xl border border-slate-100 group-hover:bg-slate-100 transition-colors">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Fabric</p>
+                        <p className="text-[10px] font-black text-slate-700 truncate">{style.fabricName || '-'}</p>
+                    </div>
+                    <div className="bg-slate-50 p-2.5 rounded-2xl border border-slate-100 group-hover:bg-slate-100 transition-colors">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Color</p>
+                        <p className="text-[10px] font-black text-slate-700 truncate">{style.color || '-'}</p>
+                    </div>
+                </div>
+
+                <div className="pt-2 mt-auto border-t border-slate-50 flex justify-between items-center text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    <span>Season: {style.season || '-'}</span>
+                    {style.stitchingRate && <span className="text-slate-900">₹{style.stitchingRate}</span>}
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const StyleList = () => {
     const { styles, deleteStyle, updateStyle, addStylesBulk, deleteStylesBulk, loading, error } = usePurchaseOrder();
     const [searchTerm, setSearchTerm] = useState('');
@@ -420,75 +525,13 @@ const StyleList = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {filteredStyles?.length > 0 ? (
                         filteredStyles.map((style) => (
-                            <div key={style.id} className="group bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl transition-all duration-500 overflow-hidden flex flex-col">
-                                <div className="relative aspect-[3/4] overflow-hidden bg-slate-50">
-                                    {style.image ? (
-                                        <img src={style.image} alt={style.styleNo} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-                                    ) : (
-                                        <div className="w-full h-full flex items-center justify-center text-6xl opacity-20 grayscale group-hover:grayscale-0 transition-all">✂️</div>
-                                    )}
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500 flex flex-col justify-end p-6">
-                                        <div className="flex gap-2">
-                                            <Link to={`/styles/${style.id}`} className="flex-1 bg-white/20 backdrop-blur-md border border-white/30 text-white py-2.5 rounded-2xl flex items-center justify-center gap-2 hover:bg-white hover:text-indigo-600 transition-all font-black text-[10px] uppercase tracking-widest">
-                                                <Eye size={16} /> View
-                                            </Link>
-                                            <Link to={`/styles/edit/${style.id}`} className="p-2.5 bg-amber-500/20 backdrop-blur-md border border-amber-500/30 text-amber-500 rounded-2xl hover:bg-amber-500 hover:text-white transition-all">
-                                                <Edit size={16} />
-                                            </Link>
-                                            <button onClick={() => handleDelete(style.id)} className="p-2.5 bg-rose-500/20 backdrop-blur-md border border-rose-500/30 text-rose-500 rounded-2xl hover:bg-rose-500 hover:text-white transition-all">
-                                                <Trash2 size={16} />
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div className="absolute top-4 left-4 flex flex-col gap-2">
-                                        <span className={clsx(
-                                            "px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest shadow-lg border",
-                                            style.status === 'Complete' ? "bg-emerald-500 text-white border-emerald-400" :
-                                            style.status === 'Deactive' ? "bg-rose-500 text-white border-rose-400" :
-                                            "bg-indigo-600 text-white border-indigo-500"
-                                        )}>
-                                            {style.status || 'Active'}
-                                        </span>
-                                        <span className="px-3 py-1 bg-white/90 backdrop-blur-md rounded-full text-[9px] font-black uppercase tracking-widest text-slate-600 shadow-sm border border-slate-100">
-                                            {style.orderType || 'New'}
-                                        </span>
-                                    </div>
-                                    {selectedStyles.includes(style.id) && (
-                                         <div className="absolute top-4 right-4 w-6 h-6 bg-indigo-600 rounded-full flex items-center justify-center text-white shadow-lg border-2 border-white animate-in zoom-in-50">
-                                            <div className="w-2 h-2 bg-white rounded-full"></div>
-                                         </div>
-                                    )}
-                                </div>
-                                <div className="p-6 space-y-4 flex-1 flex flex-col cursor-pointer" onClick={() => toggleSelect(style.id)}>
-                                    <div className="space-y-1">
-                                        <div className="flex justify-between items-start">
-                                            <h3 className="font-black text-slate-900 group-hover:text-indigo-600 transition-colors uppercase tracking-tight text-lg leading-none">
-                                                {style.styleNo}
-                                            </h3>
-                                            <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest whitespace-nowrap ml-2">
-                                                {style.category || 'General'}
-                                            </span>
-                                        </div>
-                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-tighter">{style.buyerName || 'Unassigned Buyer'}</p>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-3 pt-2">
-                                        <div className="bg-slate-50 p-2.5 rounded-2xl border border-slate-100 group-hover:bg-slate-100 transition-colors">
-                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Fabric</p>
-                                            <p className="text-[10px] font-black text-slate-700 truncate">{style.fabricName || '-'}</p>
-                                        </div>
-                                        <div className="bg-slate-50 p-2.5 rounded-2xl border border-slate-100 group-hover:bg-slate-100 transition-colors">
-                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Color</p>
-                                            <p className="text-[10px] font-black text-slate-700 truncate">{style.color || '-'}</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="pt-2 mt-auto border-t border-slate-50 flex justify-between items-center text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                        <span>Season: {style.season || '-'}</span>
-                                        {style.stitchingRate && <span className="text-slate-900">₹{style.stitchingRate}</span>}
-                                    </div>
-                                </div>
-                            </div>
+                            <StyleCard 
+                                key={style.id} 
+                                style={style} 
+                                toggleSelect={toggleSelect} 
+                                selected={selectedStyles.includes(style.id)} 
+                                handleDelete={handleDelete}
+                            />
                         ))
                     ) : (
                         <div className="col-span-full py-20 flex flex-col items-center gap-6 text-slate-300">
