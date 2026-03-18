@@ -14,19 +14,32 @@ const StyleCard = ({ style, toggleSelect, selected, handleDelete }) => {
 
     useEffect(() => {
         const fetchImage = async () => {
-            if (style.image) return;
+            if (style.image || image) return;
+            
+            // INCREASED DELAY: Give the main system core more time to breathe
+            // Random jitter helps distribute the load over time
+            const baseDelay = 3000; // 3 seconds wait minimum
+            const jitter = Math.random() * 5000; // up to 5 more seconds
+            await new Promise(r => setTimeout(r, baseDelay + jitter));
+            
+            if (!style.id) return;
+
             setLoadingImage(true);
             try {
+                // Check if we already have it in local state to avoid redundant calls
                 const { data, error } = await supabase
                     .from('styles')
                     .select('image')
                     .eq('id', style.id)
                     .single();
                 
-                if (error) throw error;
+                if (error) {
+                    if (error.code === 'PGRST116') return; // Not found, ignore
+                    throw error;
+                }
                 if (data?.image) setImage(data.image);
             } catch (err) {
-                console.error("Error fetching style image:", err);
+                console.warn(`Soft fail fetching image for style ${style.styleNo || style.id}:`, err.message);
             } finally {
                 setLoadingImage(false);
             }
@@ -361,7 +374,7 @@ const StyleList = () => {
                     <div className="w-12 h-12 border-4 border-sage-200 border-t-sage-600 rounded-full animate-spin mb-4"></div>
                     <p className="text-sage-500 font-medium tracking-widest uppercase text-xs font-black">Loading ERP Styles...</p>
                 </div>
-            ) : error ? (
+            ) : error && styles.length === 0 ? (
                 <div className="bg-rose-50 rounded-2xl shadow-sm border border-rose-100 p-12 flex flex-col items-center justify-center text-center">
                     <div className="text-4xl mb-4">⚠️</div>
                     <h3 className="text-rose-800 font-black text-xs uppercase tracking-widest mb-2">System Core Failure</h3>

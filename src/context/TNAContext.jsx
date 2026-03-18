@@ -29,10 +29,11 @@ export const TNAProvider = ({ children }) => {
         const { data, error } = await supabase
             .from('tna_templates')
             .select(`
-                *,
-                tna_template_tasks (*)
+                id, name, description, created_at,
+                tna_template_tasks (id, name, duration_days, stage, sequence_order)
             `)
-            .order('created_at', { ascending: false });
+            .order('created_at', { ascending: false })
+            .limit(50);
 
         if (error) console.error('Error fetching TNA templates:', error);
         else setTemplates(data || []);
@@ -44,16 +45,17 @@ export const TNAProvider = ({ children }) => {
         const { data, error } = await supabase
             .from('tna_plans')
             .select(`
-                *,
+                id, order_id, template_id, delivery_date, status, created_at,
                 production_orders (
                     order_no, 
-                    style:styles("styleNo"), 
+                    style:styles(styleNo), 
                     buyer:buyers(name)
                 ),
-                tna_plan_tasks (*)
+                tna_plan_tasks (id, task_name, planned_start_date, planned_end_date, status, actual_date)
             `)
             .eq('status', 'Active')
-            .order('delivery_date', { ascending: true });
+            .order('delivery_date', { ascending: true })
+            .limit(50);
 
         if (error) console.error('Error fetching active TNA plans:', error);
         else setActivePlans(data || []);

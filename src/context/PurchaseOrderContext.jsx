@@ -41,38 +41,61 @@ export const PurchaseOrderProvider = ({ children }) => {
             setLoading(true);
             setError(null);
             try {
-                console.log("Fetching all ERP data...");
-                const results = await Promise.all([
-                    supabase.from('suppliers').select('*').order('created_at', { ascending: true }),
-                    supabase.from('items').select('id, created_at, name, fabricCode, hsnCode, description, materialType, openingStock, fabricType, fabricWidth, color, fabricDesign, unit, rate, rateType').order('created_at', { ascending: true }),
-                    supabase.from('purchase_orders').select('*').order('created_at', { ascending: false }),
-                    supabase.from('challans').select('*').order('created_at', { ascending: false }),
-                    supabase.from('outward_challans').select('*').order('created_at', { ascending: false }),
-                    supabase.from('invoices').select('*').order('created_at', { ascending: false }),
-                    supabase.from('styles').select('id, created_at, styleNo, buyerPO, buyerName, fabricName, fabricContent, fabricWidth, color, season, description, notes, buyerPOReceivedDate, poExpiredDate, category, section, orderType, leadTime, poExtensionDate, stitchingRate, perPcsAvg, status, buyerPOCopy, pcsPerSet, setDetails').order('created_at', { ascending: false }),
-                    supabase.from('material_issues').select('*, material_issue_items(*), production_orders(styles(styleNo))').order('created_at', { ascending: false }),
-                    supabase.from('fabric_issues').select('*, fabric_issue_items(*)').order('created_at', { ascending: false }),
-                    supabase.from('cutting_orders').select('*, bundles(*), production_orders(order_no, styles(styleNo, buyerPO))').order('created_at', { ascending: false })
-                ]);
+                console.log("Fetching ERP data sequentially...");
+                
+                const fetchTable = async (tableName, query, setter) => {
+                    try {
+                        const { data, error } = await query;
+                        if (error) {
+                            console.error(`Failed to fetch ${tableName}:`, error);
+                            // Don't set global error yet, just log it
+                            return { name: tableName, error };
+                        }
+                        setter(data || []);
+                        return { name: tableName, success: true };
+                    } catch (err) {
+                        console.error(`Exception while fetching ${tableName}:`, err);
+                        return { name: tableName, error: err };
+                    }
+                };
 
-                // Check for errors and log them
-                const errors = results.filter(r => r.error).map(r => r.error);
-                if (errors.length > 0) {
-                    console.error("Some data fetches failed:", errors);
-                    setError(`Failed to fetch: ${errors.map(e => e.message).join(', ')}`);
+                const fetchTasks = [
+                    { name: 'suppliers', query: supabase.from('suppliers').select('id, name').limit(100), setter: setSuppliers },
+                    { 
+                        name: 'items', 
+                        query: supabase.from('items').select('id, name, sku, category, status').limit(100), 
+                        setter: setItems 
+                    },
+                    { name: 'purchase_orders', query: supabase.from('purchase_orders').select('id, created_at, poNumber, date, supplierId, status').limit(50), setter: setPurchaseOrders },
+                    { 
+                        name: 'challans', 
+                        query: supabase.from('challans').select('id, grnNo, date, status').limit(50), 
+                        setter: setChallans 
+                    },
+                    { name: 'outward_challans', query: supabase.from('outward_challans').select('id, outChallanNo, date').limit(50), setter: setOutwardChallans },
+                    { name: 'invoices', query: supabase.from('invoices').select('id, invoiceNo, date, status').limit(50), setter: setInvoices },
+                    { name: 'styles', query: supabase.from('styles').select('id, styleNo, status, created_at, buyerPO').limit(50), setter: setStyles },
+                    { name: 'material_issues', query: supabase.from('material_issues').select('id, issue_no, status').limit(50), setter: setMaterialIssues },
+                    { name: 'fabric_issues', query: supabase.from('fabric_issues').select('id, issue_no, status').limit(50), setter: setFabricIssues },
+                    { name: 'cutting_orders', query: supabase.from('cutting_orders').select('id, cutting_no, status').limit(50), setter: setCuttingOrders }
+                ];
+
+                const results = [];
+                // Run critical fetches first, then others
+                for (const task of fetchTasks) {
+                    const result = await fetchTable(task.name, task.query, task.setter);
+                    results.push(result);
+                    // Short sleep to prevent hitting rate limits/concurrency spikes
+                    await new Promise(r => setTimeout(r, 50)); 
                 }
 
-                setSuppliers(results[0].data || []);
-                setItems(results[1].data || []);
-                setPurchaseOrders(results[2].data || []);
-                setChallans(results[3].data || []);
-                setOutwardChallans(results[4].data || []);
-                setInvoices(results[5].data || []);
-                setStyles(results[6].data || []);
-                setMaterialIssues(results[7].data || []);
-                setFabricIssues(results[8].data || []);
-                setCuttingOrders(results[9].data || []);
+                // Critical parts check: Only fail if EVERYTHING fails or if StyleList can't even get IDs
+                const errors = results.filter(r => r.error);
+                if (errors.length > 5) { // If more than half the system fails
+                    setError(`System is responding slowly. Please check your internet or Supabase quota.`);
+                }
 
+                // Costings is handled separately as it was before
                 const { data: costingsData, error: costingsError } = await supabase.from('costings').select('*').order('created_at', { ascending: true });
                 if (!costingsError) {
                     setCostings(costingsData || []);
@@ -81,7 +104,7 @@ export const PurchaseOrderProvider = ({ children }) => {
                 }
 
             } catch (error) {
-                console.error("Error fetching data:", error);
+                console.error("Error in fetchAllData:", error);
                 setError(error.message);
                 if (error.message && (error.message.includes('Could not find') || error.message.includes('relation'))) {
                     setSchemaError(error.message);

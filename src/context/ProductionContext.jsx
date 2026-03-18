@@ -26,10 +26,11 @@ export const ProductionProvider = ({ children }) => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            // Helper to handle safe fetching
-            const safeFetch = async (table) => {
+            console.log("ProductionContext: Fetching master data sequentially...");
+            
+            const safeFetch = async (table, selectStr = '*') => {
                 try {
-                    const { data, error } = await supabase.from(table).select('*');
+                    const { data, error } = await supabase.from(table).select(selectStr).limit(100);
                     if (error) {
                         console.warn(`Query error fetching ${table}:`, error.message);
                         return [];
@@ -41,27 +42,25 @@ export const ProductionProvider = ({ children }) => {
                 }
             };
 
-            const [bu, se, ca, un, li, wo, mt, ma, op] = await Promise.all([
-                safeFetch('buyers'),
-                safeFetch('seasons'),
-                safeFetch('garment_categories'),
-                safeFetch('units'),
-                safeFetch('production_lines'),
-                safeFetch('workers'),
-                safeFetch('machine_types'),
-                safeFetch('machines'),
-                safeFetch('operations_master')
-            ]);
+            const tables = [
+                { name: 'buyers', setter: setBuyers, select: 'id, name, status' },
+                { name: 'seasons', setter: setSeasons, select: 'id, name, status' },
+                { name: 'garment_categories', setter: setCategories, select: 'id, name, status' },
+                { name: 'units', setter: setUnits, select: 'id, name' },
+                { name: 'production_lines', setter: setLines, select: 'id, name, unit_id, status' },
+                { name: 'workers', setter: setWorkers, select: 'id, worker_code, name, designation, status' },
+                { name: 'machine_types', setter: setMachineTypes, select: 'id, name' },
+                { name: 'machines', setter: setMachines, select: 'id, machine_no, type_id, status' },
+                { name: 'operations_master', setter: setOperations, select: 'id, name, category, standard_rate' }
+            ];
 
-            setBuyers(bu);
-            setSeasons(se);
-            setCategories(ca);
-            setUnits(un);
-            setLines(li);
-            setWorkers(wo);
-            setMachineTypes(mt);
-            setMachines(ma);
-            setOperations(op);
+            for (const table of tables) {
+                const data = await safeFetch(table.name, table.select);
+                table.setter(data);
+                // Tiny delay to breathe
+                await new Promise(r => setTimeout(r, 50));
+            }
+
         } catch (error) {
             console.error('ProductionContext: Unexpected error in fetchData:', error);
         } finally {
