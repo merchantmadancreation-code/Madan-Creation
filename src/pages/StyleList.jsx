@@ -49,8 +49,8 @@ const StyleCard = ({ style, toggleSelect, selected, handleDelete }) => {
     }, [style.id, style.image]);
 
     return (
-        <div className="group bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl transition-all duration-500 overflow-hidden flex flex-col">
-            <div className="relative aspect-[3/4] overflow-hidden bg-slate-50">
+        <div className="group bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-lg transition-all duration-500 overflow-hidden flex flex-col h-full">
+            <div className="relative aspect-[7/9] overflow-hidden bg-slate-50">
                 {image ? (
                     <img src={image} alt={style.styleNo} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                 ) : loadingImage ? (
@@ -93,27 +93,24 @@ const StyleCard = ({ style, toggleSelect, selected, handleDelete }) => {
                     </div>
                 )}
             </div>
-            <div className="p-6 space-y-4 flex-1 flex flex-col cursor-pointer" onClick={() => toggleSelect(style.id)}>
-                <div className="space-y-1">
+            <div className="p-4 space-y-3 flex-1 flex flex-col cursor-pointer" onClick={() => toggleSelect(style.id)}>
+                <div className="space-y-0.5">
                     <div className="flex justify-between items-start">
-                        <h3 className="font-black text-slate-900 group-hover:text-indigo-600 transition-colors uppercase tracking-tight text-lg leading-none">
+                        <h3 className="font-black text-slate-900 group-hover:text-indigo-600 transition-colors uppercase tracking-widest text-[11px] leading-tight truncate px-0.5">
                             {style.styleNo}
                         </h3>
-                        <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest whitespace-nowrap ml-2">
-                            {style.category || 'General'}
-                        </span>
                     </div>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-tighter">{style.buyerName || 'Unassigned Buyer'}</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter truncate px-0.5">{style.buyerName || 'General Style'}</p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 pt-2">
-                    <div className="bg-slate-50 p-2.5 rounded-2xl border border-slate-100 group-hover:bg-slate-100 transition-colors">
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Fabric</p>
-                        <p className="text-[10px] font-black text-slate-700 truncate">{style.fabricName || '-'}</p>
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                    <div className="bg-slate-50/50 p-2 rounded-xl border border-slate-100/50 group-hover:bg-slate-100 transition-colors">
+                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Fab</p>
+                        <p className="text-[9px] font-black text-slate-700 truncate">{style.fabricName || '-'}</p>
                     </div>
-                    <div className="bg-slate-50 p-2.5 rounded-2xl border border-slate-100 group-hover:bg-slate-100 transition-colors">
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Color</p>
-                        <p className="text-[10px] font-black text-slate-700 truncate">{style.color || '-'}</p>
+                    <div className="bg-slate-50/50 p-2 rounded-xl border border-slate-100/50 group-hover:bg-slate-100 transition-colors">
+                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Col</p>
+                        <p className="text-[9px] font-black text-slate-700 truncate">{style.color || '-'}</p>
                     </div>
                 </div>
 
@@ -537,7 +534,7 @@ const StyleList = () => {
                     </div>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                     {filteredStyles?.length > 0 ? (
                         filteredStyles.map((style) => (
                             <StyleCard 
