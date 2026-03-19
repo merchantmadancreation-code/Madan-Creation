@@ -35,20 +35,6 @@ const DPRWorkspace = () => {
         planned_target: 0, actual_produced: 0, defects_count: 0
     });
     const [efficiency, setEfficiency] = useState(0);
-    const [filteredStyles, setFilteredStyles] = useState([]);
-
-    // --- FORM LOGIC (Preserved) ---
-    useEffect(() => {
-        if (formData.buyer_id) {
-            const selectedBuyer = buyers.find(b => b.id === formData.buyer_id);
-            setFilteredStyles(styles.filter(s => 
-                s.buyerId === formData.buyer_id || 
-                (selectedBuyer && s.buyerName === selectedBuyer.name)
-            ));
-        } else {
-            setFilteredStyles(styles);
-        }
-    }, [formData.buyer_id, styles, buyers]);
 
     useEffect(() => {
         const target = parseFloat(formData.planned_target) || 0;
@@ -325,7 +311,7 @@ const DPRWorkspace = () => {
                                         className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all appearance-none"
                                     >
                                         <option value="">Select Style</option>
-                                        {filteredStyles.map(s => <option key={s.id} value={s.id}>{s.styleNo}</option>)}
+                                        {styles.map(s => <option key={s.id} value={s.id}>{s.styleNo}</option>)}
                                     </select>
                                 </div>
                             </div>
