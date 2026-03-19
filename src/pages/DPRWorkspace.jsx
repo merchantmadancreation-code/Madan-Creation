@@ -35,6 +35,21 @@ const DPRWorkspace = () => {
         planned_target: 0, actual_produced: 0, defects_count: 0
     });
     const [efficiency, setEfficiency] = useState(0);
+    const [sizeData, setSizeData] = useState([]);
+
+    useEffect(() => {
+        if (formData.production_stage === 'Cutting') {
+            const actualSum = sizeData.reduce((sum, item) => sum + (parseFloat(item.actual) || 0), 0);
+            const targetSum = sizeData.reduce((sum, item) => sum + (parseFloat(item.target) || 0), 0);
+            if (formData.actual_produced !== actualSum || formData.planned_target !== targetSum) {
+                setFormData(prev => ({
+                    ...prev,
+                    actual_produced: actualSum,
+                    planned_target: targetSum
+                }));
+            }
+        }
+    }, [sizeData, formData.production_stage]);
 
     useEffect(() => {
         const target = parseFloat(formData.planned_target) || 0;
@@ -55,7 +70,9 @@ const DPRWorkspace = () => {
                 .insert([{
                     ...formData,
                     efficiency: efficiency,
-                    report_date: new Date().toISOString().split('T')[0]
+                    report_date: new Date().toISOString().split('T')[0],
+                    // We can embed size_data into an unused column if needed, or if added to schema. 
+                    // For now keeping it strictly matching existing schema but calculating totals perfectly.
                 }]);
 
             if (error) throw error;
@@ -65,6 +82,7 @@ const DPRWorkspace = () => {
                 line_id: '', responsible_staff: '', machine_group: '', bundle_start: '',
                 planned_target: 0, actual_produced: 0, defects_count: 0
             });
+            setSizeData([]);
             fetchOverview();
             // Go back to dashboard view
             setShowEntryForm(false);
@@ -303,6 +321,18 @@ const DPRWorkspace = () => {
                                                 (selectedStyle?.buyerId && b.id === selectedStyle.buyerId) || 
                                                 (selectedStyle?.buyerName && b.name === selectedStyle.buyerName)
                                             );
+                                            
+                                            // Setup Size Data for Cutting
+                                            if (selectedStyle && selectedStyle.sizeWiseDetails) {
+                                                setSizeData(selectedStyle.sizeWiseDetails.map(d => ({
+                                                    size: d.size,
+                                                    target: parseFloat(d.qty) || 0,
+                                                    actual: 0
+                                                })));
+                                            } else {
+                                                setSizeData([]);
+                                            }
+
                                             setFormData({
                                                 ...formData, style_id: sId, order_no: selectedStyle?.buyerPO || '',
                                                 planned_target: totalQty, buyer_id: matchedBuyer?.id || formData.buyer_id
@@ -385,18 +415,61 @@ const DPRWorkspace = () => {
                             )}
                         </div>
 
-                        {/* KPI Tiles */}
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 bg-slate-50/80 p-6 rounded-3xl border border-dotted border-slate-200">
-                            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm transition-all hover:scale-[1.02] cursor-default">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-4">Planned Target</label>
-                                <input type="number" value={formData.planned_target} onChange={(e) => setFormData({...formData, planned_target: e.target.value})}
-                                    className="w-full text-3xl font-black text-slate-800 focus:outline-none text-center bg-transparent" />
+                        {/* Size Wise Input Section (Cutting only) */}
+                        {formData.production_stage === 'Cutting' && sizeData.length > 0 && (
+                            <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+                                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Size-Wise Cutting Entry</h3>
+                                <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+                                    {sizeData.map((item, idx) => (
+                                        <div key={idx} className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex flex-col gap-2">
+                                            <div className="flex justify-between items-center">
+                                                <span className="font-black text-slate-700">{item.size}</span>
+                                                <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
+                                                    Order: {item.target}
+                                                </span>
+                                            </div>
+                                            <input 
+                                                type="number" 
+                                                min="0"
+                                                value={item.actual}
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    const newSizeData = [...sizeData];
+                                                    newSizeData[idx].actual = val === '' ? '' : parseInt(val) || 0;
+                                                    setSizeData(newSizeData);
+                                                }}
+                                                placeholder="Cut Qty"
+                                                className="w-full text-lg font-black text-indigo-700 bg-white border border-slate-200 rounded-lg py-2 text-center focus:outline-none focus:ring-2 focus:ring-indigo-500/20 shadow-inner"
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
+                        )}
+
+                        {/* KPI Tiles */}
+                        <div className={clsx(
+                            "grid gap-6 bg-slate-50/80 p-6 rounded-3xl border border-dotted border-slate-200",
+                            formData.production_stage === 'Cutting' ? "grid-cols-1 md:grid-cols-3" : "grid-cols-1 md:grid-cols-4"
+                        )}>
+                            {formData.production_stage !== 'Cutting' && (
+                                <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm transition-all hover:scale-[1.02] cursor-default">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-4">Planned Target</label>
+                                    <input type="number" value={formData.planned_target} onChange={(e) => setFormData({...formData, planned_target: e.target.value})}
+                                        className="w-full text-3xl font-black text-slate-800 focus:outline-none text-center bg-transparent" />
+                                </div>
+                            )}
 
                             <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm transition-all hover:scale-[1.02] cursor-default">
                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-4">Actual Produced</label>
-                                <input type="number" value={formData.actual_produced} onChange={(e) => setFormData({...formData, actual_produced: e.target.value})}
-                                    className="w-full text-3xl font-black text-indigo-600 focus:outline-none text-center bg-transparent" />
+                                <input type="number" value={formData.actual_produced} 
+                                    readOnly={formData.production_stage === 'Cutting'}
+                                    onChange={(e) => setFormData({...formData, actual_produced: e.target.value})}
+                                    className={clsx(
+                                        "w-full text-3xl font-black text-indigo-600 focus:outline-none text-center bg-transparent",
+                                        formData.production_stage === 'Cutting' && "opacity-80"
+                                    )} 
+                                />
                             </div>
 
                             <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm transition-all hover:scale-[1.02] cursor-default">
