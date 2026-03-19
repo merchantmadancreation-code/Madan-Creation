@@ -74,7 +74,7 @@ export const PurchaseOrderProvider = ({ children }) => {
                     },
                     { name: 'outward_challans', query: supabase.from('outward_challans').select('id, outChallanNo, date').limit(50), setter: setOutwardChallans },
                     { name: 'invoices', query: supabase.from('invoices').select('id, invoiceNo, date, status').limit(50), setter: setInvoices },
-                    { name: 'styles', query: supabase.from('styles').select('id, styleNo, status, created_at, buyerPO').limit(50), setter: setStyles },
+                    { name: 'styles', query: supabase.from('styles').select('id, styleNo, status, created_at, buyerPO, buyerId, buyerName, sizeWiseDetails').limit(50), setter: setStyles },
                     { name: 'material_issues', query: supabase.from('material_issues').select('id, issue_no, status').limit(50), setter: setMaterialIssues },
                     { name: 'fabric_issues', query: supabase.from('fabric_issues').select('id, issue_no, status').limit(50), setter: setFabricIssues },
                     { name: 'cutting_orders', query: supabase.from('cutting_orders').select('id, cutting_no, status').limit(50), setter: setCuttingOrders }
