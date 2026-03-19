@@ -15,13 +15,13 @@ const StyleCard = ({ style, toggleSelect, selected, handleDelete }) => {
     useEffect(() => {
         const fetchImage = async () => {
             if (style.image || image) return;
-            
+
             // INCREASED DELAY: Give the main system core more time to breathe
             // Random jitter helps distribute the load over time
             const baseDelay = 3000; // 3 seconds wait minimum
             const jitter = Math.random() * 5000; // up to 5 more seconds
             await new Promise(r => setTimeout(r, baseDelay + jitter));
-            
+
             if (!style.id) return;
 
             setLoadingImage(true);
@@ -32,7 +32,7 @@ const StyleCard = ({ style, toggleSelect, selected, handleDelete }) => {
                     .select('image')
                     .eq('id', style.id)
                     .single();
-                
+
                 if (error) {
                     if (error.code === 'PGRST116') return; // Not found, ignore
                     throw error;
@@ -78,8 +78,8 @@ const StyleCard = ({ style, toggleSelect, selected, handleDelete }) => {
                     <span className={clsx(
                         "px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest shadow-lg border",
                         style.status === 'Complete' ? "bg-emerald-500 text-white border-emerald-400" :
-                        style.status === 'Deactive' ? "bg-rose-500 text-white border-rose-400" :
-                        "bg-indigo-600 text-white border-indigo-500"
+                            style.status === 'Deactive' ? "bg-rose-500 text-white border-rose-400" :
+                                "bg-indigo-600 text-white border-indigo-500"
                     )}>
                         {style.status || 'Active'}
                     </span>
@@ -278,8 +278,8 @@ const StyleList = () => {
     };
 
     return (
-        <div className="space-y-6">
-            <div className="sticky top-0 z-50 bg-[#fdfbf7]/95 backdrop-blur-md -mx-8 -mt-8 px-8 py-4 border-b border-sage-200 shadow-md transition-all">
+        <div className="flex flex-col h-[calc(100vh-140px)]">
+            <div className="shrink-0 z-[90] bg-[#fdfbf7]/100 backdrop-blur-md -mx-4 px-6 py-4 border-b border-sage-200 shadow-xl transition-all rounded-b-xl mb-4 relative">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
                     <div>
                         <h1 className="text-2xl font-bold text-sage-800 flex items-center gap-2">
@@ -341,7 +341,7 @@ const StyleList = () => {
                             className="w-full pl-10 pr-4 py-2 border border-sage-200 rounded-lg focus:ring-2 focus:ring-sage-500 bg-white/80 backdrop-blur-sm outline-none text-sm transition-all shadow-sm"
                         />
                     </div>
-                    
+
                     <div className="flex items-center gap-1 bg-sage-100/50 p-1 rounded-lg border border-sage-200 shadow-inner">
                         <button
                             onClick={() => setViewMode('table')}
@@ -365,7 +365,8 @@ const StyleList = () => {
                 </div>
             </div>
 
-            {/* Data Area */}
+            {/* Scrollable Data Area */}
+            <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar pb-10">
             {loading ? (
                 <div className="bg-white rounded-2xl shadow-sm border border-sage-100 p-20 flex flex-col items-center justify-center">
                     <div className="w-12 h-12 border-4 border-sage-200 border-t-sage-600 rounded-full animate-spin mb-4"></div>
@@ -376,7 +377,7 @@ const StyleList = () => {
                     <div className="text-4xl mb-4">⚠️</div>
                     <h3 className="text-rose-800 font-black text-xs uppercase tracking-widest mb-2">System Core Failure</h3>
                     <p className="text-rose-600 text-xs font-bold max-w-md">{error}</p>
-                    <button 
+                    <button
                         onClick={() => window.location.reload()}
                         className="mt-6 px-6 py-2 bg-rose-600 text-white rounded-full text-xs font-black uppercase tracking-widest hover:bg-rose-700 transition-all shadow-lg"
                     >
@@ -384,12 +385,12 @@ const StyleList = () => {
                     </button>
                 </div>
             ) : viewMode === 'table' ? (
-                <div className="bg-white rounded-xl shadow-sm border border-sage-100 overflow-hidden">
-                    <div className="overflow-x-auto">
+                <div className="bg-white rounded-xl shadow-sm border border-sage-100 overflow-hidden flex flex-col">
+                    <div className="overflow-x-auto overflow-y-auto max-h-[70vh] custom-scrollbar">
                         <table className="w-full text-sm text-left border-separate border-spacing-0">
-                            <thead className="bg-[#f8fafc] text-slate-500 uppercase text-[10px] font-black tracking-widest border-b border-slate-100">
+                            <thead className="bg-[#f8fafc] text-slate-500 uppercase text-[10px] font-black tracking-widest sticky top-0 z-20 shadow-sm">
                                 <tr>
-                                    <th className="pl-8 pr-4 py-5 w-12">
+                                    <th className="pl-8 pr-4 py-5 w-12 bg-[#f8fafc] sticky top-0 z-20">
                                         <div className="flex items-center">
                                             <input
                                                 type="checkbox"
@@ -399,16 +400,16 @@ const StyleList = () => {
                                             />
                                         </div>
                                     </th>
-                                    <th className="px-4 py-5 w-24">Image</th>
-                                    <th className="px-4 py-5">Style Identifier</th>
-                                    <th className="px-4 py-5">Buyer / Client</th>
-                                    <th className="px-4 py-5">Fabric Info</th>
-                                    <th className="px-4 py-5">Category</th>
-                                    <th className="px-4 py-5">Order Type</th>
-                                    <th className="px-4 py-5">Color</th>
-                                    <th className="px-4 py-5">Season</th>
-                                    <th className="px-4 py-5">Status</th>
-                                    <th className="pr-8 pl-4 py-5 text-center">Actions</th>
+                                    <th className="px-4 py-5 w-24 bg-[#f8fafc] sticky top-0 z-20">Image</th>
+                                    <th className="px-4 py-5 bg-[#f8fafc] sticky top-0 z-20">Style Identifier</th>
+                                    <th className="px-4 py-5 bg-[#f8fafc] sticky top-0 z-20">Buyer / Client</th>
+                                    <th className="px-4 py-5 bg-[#f8fafc] sticky top-0 z-20">Fabric Info</th>
+                                    <th className="px-4 py-5 bg-[#f8fafc] sticky top-0 z-20">Category</th>
+                                    <th className="px-4 py-5 bg-[#f8fafc] sticky top-0 z-20">Order Type</th>
+                                    <th className="px-4 py-5 bg-[#f8fafc] sticky top-0 z-20">Color</th>
+                                    <th className="px-4 py-5 bg-[#f8fafc] sticky top-0 z-20">Season</th>
+                                    <th className="px-4 py-5 bg-[#f8fafc] sticky top-0 z-20">Status</th>
+                                    <th className="pr-8 pl-4 py-5 text-center bg-[#f8fafc] sticky top-0 z-20">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
@@ -537,24 +538,24 @@ const StyleList = () => {
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                     {filteredStyles?.length > 0 ? (
                         filteredStyles.map((style) => (
-                            <StyleCard 
-                                key={style.id} 
-                                style={style} 
-                                toggleSelect={toggleSelect} 
-                                selected={selectedStyles.includes(style.id)} 
+                            <StyleCard
+                                key={style.id}
+                                style={style}
+                                toggleSelect={toggleSelect}
+                                selected={selectedStyles.includes(style.id)}
                                 handleDelete={handleDelete}
                             />
                         ))
                     ) : (
                         <div className="col-span-full py-20 flex flex-col items-center gap-6 text-slate-300">
-                             <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center text-5xl grayscale opacity-50">✂️</div>
-                             <div className="text-center">
+                            <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center text-5xl grayscale opacity-50">✂️</div>
+                            <div className="text-center">
                                 <p className="font-black text-xs uppercase tracking-widest mb-2">
                                     {searchTerm ? `No styles matching "${searchTerm}"` : "Database core is empty"}
                                 </p>
                                 <p className="text-[10px] font-medium text-slate-400">Try adjusting your filters or create a new style</p>
-                             </div>
-                             {!searchTerm && (
+                            </div>
+                            {!searchTerm && (
                                 <Link to="/styles/new" className="bg-indigo-600 text-white px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-xl hover:scale-105">
                                     Create First Entry
                                 </Link>
@@ -563,6 +564,7 @@ const StyleList = () => {
                     )}
                 </div>
             )}
+            </div>
         </div>
     );
 };

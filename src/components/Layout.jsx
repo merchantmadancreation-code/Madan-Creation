@@ -106,13 +106,13 @@ const Layout = () => {
     });
     return (
         <div
-            className="flex flex-col min-h-screen bg-cover bg-center bg-fixed relative px-5"
+            className="flex flex-col h-screen overflow-hidden bg-cover bg-center bg-fixed relative px-5"
             style={{ backgroundImage: 'url("/silver-bg.png")' }}
         >
             {/* Global Light Blur Overlay for readability */}
             <div className="absolute inset-0 bg-white/40 backdrop-blur-[2px] pointer-events-none z-0"></div>
 
-            <div className="flex-1 flex flex-col max-w-[1920px] mx-auto w-full relative">
+            <div className="flex-1 min-h-0 flex flex-col max-w-[1920px] mx-auto w-full relative">
                 {/* Two-Tier Horizontal Header */}
                 <header className="sticky top-4 z-[100] flex flex-col shadow-2xl">
                     {/* Row 1: Brand & User Profile */}
@@ -253,7 +253,7 @@ const Layout = () => {
             )}
 
             {/* Main Content */}
-            <main className="flex-1 overflow-y-auto mt-[24px]">
+            <main className="flex-1 min-h-0 overflow-y-auto mt-[24px] pb-12">
                 <div className="min-h-full">
                     <Outlet />
                 </div>
