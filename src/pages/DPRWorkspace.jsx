@@ -360,19 +360,21 @@ const DPRWorkspace = () => {
                                 </div>
                             </div>
 
-                            {/* Row 2 */}
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Line / Unit</label>
-                                <div className="relative">
-                                    <Layers className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
-                                    <select value={formData.line_id} onChange={(e) => setFormData({...formData, line_id: e.target.value})}
-                                        className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all appearance-none"
-                                    >
-                                        <option value="">Select Line</option>
-                                        {lines.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-                                    </select>
+                            {/* Row 2 Conditional */}
+                            {['Stitching', 'Finishing', 'Packing'].includes(formData.production_stage) && (
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Line / Unit</label>
+                                    <div className="relative">
+                                        <Layers className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+                                        <select value={formData.line_id} onChange={(e) => setFormData({...formData, line_id: e.target.value})}
+                                            className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all appearance-none"
+                                        >
+                                            <option value="">Select Line</option>
+                                            {lines.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                                        </select>
+                                    </div>
                                 </div>
-                            </div>
+                            )}
 
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Responsible Staff</label>
@@ -380,17 +382,21 @@ const DPRWorkspace = () => {
                                     className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-slate-700" />
                             </div>
 
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Machine Group</label>
-                                <input type="text" placeholder="G-X" value={formData.machine_group} onChange={(e) => setFormData({...formData, machine_group: e.target.value})}
-                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-slate-700" />
-                            </div>
+                            {['Stitching', 'Embroidery', 'Printing'].includes(formData.production_stage) && (
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Machine Group</label>
+                                    <input type="text" placeholder="G-X" value={formData.machine_group} onChange={(e) => setFormData({...formData, machine_group: e.target.value})}
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-slate-700" />
+                                </div>
+                            )}
 
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Bundle Start</label>
-                                <input type="text" placeholder="B-XXXX" value={formData.bundle_start} onChange={(e) => setFormData({...formData, bundle_start: e.target.value})}
-                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-slate-700" />
-                            </div>
+                            {['Cutting', 'Stitching'].includes(formData.production_stage) && (
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Bundle Start</label>
+                                    <input type="text" placeholder="B-XXXX" value={formData.bundle_start} onChange={(e) => setFormData({...formData, bundle_start: e.target.value})}
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-slate-700" />
+                                </div>
+                            )}
                         </div>
 
                         {/* KPI Tiles */}
