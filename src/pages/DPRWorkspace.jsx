@@ -626,10 +626,10 @@ const DPRWorkspace = () => {
                                 <th className="px-6 py-4 text-right">FABRIC REC.</th>
                                 <th className="px-6 py-4 text-right">CUTTING</th>
                                 <th className="px-6 py-4 text-right">STITCHING</th>
-                                <th className="px-6 py-4 text-right">FINISHING</th>
-                                <th className="px-6 py-4 text-right">PACKING</th>
-                                <th className="px-6 py-4 text-right text-indigo-600">BALANCE</th>
-                                <th className="px-6 py-4 text-center">ACTIONS</th>
+                                <th className="px-6 py-4">Finishing</th>
+                                <th className="px-6 py-4">Packing</th>
+                                <th className="px-6 py-4 text-indigo-600">Balance</th>
+                                <th className="px-6 py-4 text-center text-red-600">LIVE ACTIONS 🚀</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50">
