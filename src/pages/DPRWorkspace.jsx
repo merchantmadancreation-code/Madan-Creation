@@ -142,7 +142,13 @@ const DPRWorkspace = () => {
             const dprMap = {};
             dprData?.forEach(log => {
                 if (!log.order_no) return;
-                if (!dprMap[log.order_no]) dprMap[log.order_no] = { finishing: 0, packing: 0 };
+                if (!dprMap[log.order_no]) dprMap[log.order_no] = { cutting: 0, stitching: 0, finishing: 0, packing: 0 };
+                if (log.production_stage === 'Cutting') {
+                    dprMap[log.order_no].cutting += (Number(log.actual_produced) || 0);
+                }
+                if (log.production_stage === 'Stitching') {
+                    dprMap[log.order_no].stitching += (Number(log.actual_produced) || 0);
+                }
                 if (log.production_stage === 'Finishing') {
                     dprMap[log.order_no].finishing += (Number(log.actual_produced) || 0);
                 }
@@ -161,11 +167,15 @@ const DPRWorkspace = () => {
             const consolidated = poData?.map(po => {
                 const cuts = cutMap[po.id] || { fabric_rec: 0, cut_qty: 0 };
                 const stitches = stitchMap[po.id] || 0;
-                const logs = dprMap[po.order_no] || { finishing: 0, packing: 0 };
+                const logs = dprMap[po.order_no] || { cutting: 0, stitching: 0, finishing: 0, packing: 0 };
+
+                // Combine values from specific specific tables and generic dpr_logs
+                const finalCutting = cuts.cut_qty + logs.cutting;
+                const finalStitching = stitches + logs.stitching;
 
                 totFabric += cuts.fabric_rec;
-                totCutting += cuts.cut_qty;
-                totStitching += stitches;
+                totCutting += finalCutting;
+                totStitching += finalStitching;
                 totFinishing += logs.finishing;
                 totPacking += logs.packing;
                 
@@ -185,8 +195,8 @@ const DPRWorkspace = () => {
                     fabric_status: cuts.fabric_rec > 0 ? `${cuts.fabric_rec}m` : '0m',
                     size: sizesStr,
                     fabric_rec: cuts.fabric_rec,
-                    cutting: cuts.cut_qty,
-                    stitching: stitches,
+                    cutting: finalCutting,
+                    stitching: finalStitching,
                     finishing: logs.finishing,
                     packing: logs.packing,
                     balance: (po.total_qty || 0) - logs.packing,
