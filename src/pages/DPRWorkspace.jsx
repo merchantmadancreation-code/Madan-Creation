@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import { 
     Activity, Download, RefreshCw, Search, Calendar, Package,
     Settings, User, Layers, ChevronRight, Plus, X, Image as ImageIcon,
-    ArrowLeft
+    ArrowLeft, Eye
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useProduction } from '../context/ProductionContext';
@@ -671,14 +671,10 @@ const DPRWorkspace = () => {
                                         <td className="px-6 py-4 text-center">
                                             <Link 
                                                 to={`/production-orders/${row.id}`}
-                                                title={`View details for ${row.po_number}`}
-                                                onClick={(e) => {
-                                                    console.info("Navigating to:", `/production-orders/${row.id}`);
-                                                    if (row.id) window.location.assign(`/production-orders/${row.id}`);
-                                                }}
-                                                className="text-[10px] font-black uppercase tracking-widest text-slate-400 border border-slate-200 rounded px-2 py-1 hover:text-indigo-600 hover:border-indigo-200 transition-colors bg-white inline-block shadow-sm z-50 relative"
+                                                title={`View Production Order ${row.po_number}`}
+                                                className="p-1.5 rounded-lg text-sage-600 hover:bg-sage-100 hover:text-indigo-600 transition-colors inline-block"
                                             >
-                                                View Details
+                                                <Eye size={18} />
                                             </Link>
                                         </td>
                                     </tr>
