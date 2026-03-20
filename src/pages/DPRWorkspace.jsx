@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { 
     Activity, Download, RefreshCw, Search, Calendar, Package,
@@ -142,21 +142,20 @@ const DPRWorkspace = () => {
             });
 
             const dprMap = {};
+            // console.log("RAW DPR DATA:", dprData); // Debug log for user console
+
             dprData?.forEach(log => {
-                if (!log.order_no) return;
-                if (!dprMap[log.order_no]) dprMap[log.order_no] = { cutting: 0, stitching: 0, finishing: 0, packing: 0 };
-                if (log.production_stage === 'Cutting') {
-                    dprMap[log.order_no].cutting += (Number(log.actual_produced) || 0);
-                }
-                if (log.production_stage === 'Stitching') {
-                    dprMap[log.order_no].stitching += (Number(log.actual_produced) || 0);
-                }
-                if (log.production_stage === 'Finishing') {
-                    dprMap[log.order_no].finishing += (Number(log.actual_produced) || 0);
-                }
-                if (log.production_stage === 'Packing') {
-                    dprMap[log.order_no].packing += (Number(log.actual_produced) || 0);
-                }
+                const orderNo = (log.order_no || "").trim();
+                if (!orderNo) return;
+                
+                if (!dprMap[orderNo]) dprMap[orderNo] = { cutting: 0, stitching: 0, finishing: 0, packing: 0 };
+                
+                const val = parseFloat(log.actual_produced) || 0;
+                
+                if (log.production_stage === 'Cutting') dprMap[orderNo].cutting += val;
+                if (log.production_stage === 'Stitching') dprMap[orderNo].stitching += val;
+                if (log.production_stage === 'Finishing') dprMap[orderNo].finishing += val;
+                if (log.production_stage === 'Packing') dprMap[orderNo].packing += val;
             });
 
             let totOrders = poData?.length || 0;
@@ -167,13 +166,14 @@ const DPRWorkspace = () => {
             let totPacking = 0;
 
             const consolidated = poData?.map(po => {
+                const poNum = (po.order_no || "").trim();
                 const cuts = cutMap[po.id] || { fabric_rec: 0, cut_qty: 0 };
                 const stitches = stitchMap[po.id] || 0;
-                const logs = dprMap[po.order_no] || { cutting: 0, stitching: 0, finishing: 0, packing: 0 };
+                const logs = dprMap[poNum] || { cutting: 0, stitching: 0, finishing: 0, packing: 0 };
 
                 // Combine values from specific specific tables and generic dpr_logs
-                const finalCutting = cuts.cut_qty + logs.cutting;
-                const finalStitching = stitches + logs.stitching;
+                const finalCutting = Math.round(cuts.cut_qty + logs.cutting);
+                const finalStitching = Math.round(stitches + logs.stitching);
 
                 totFabric += cuts.fabric_rec;
                 totCutting += finalCutting;
@@ -669,12 +669,12 @@ const DPRWorkspace = () => {
                                         <td className="px-6 py-4 text-sm font-black text-slate-600 text-right">{row.packing}</td>
                                         <td className="px-6 py-4 text-sm font-black text-indigo-600 text-right">{row.balance}</td>
                                         <td className="px-6 py-4 text-center">
-                                            <button 
-                                                onClick={() => navigate(`/production-orders/${row.id}`)}
-                                                className="text-[10px] font-black uppercase tracking-widest text-slate-400 border border-slate-200 rounded px-2 py-1 hover:text-indigo-600 hover:border-indigo-200 transition-colors bg-white"
+                                            <Link 
+                                                to={`/production-orders/${row.id}`}
+                                                className="text-[10px] font-black uppercase tracking-widest text-slate-400 border border-slate-200 rounded px-2 py-1 hover:text-indigo-600 hover:border-indigo-200 transition-colors bg-white inline-block shadow-sm"
                                             >
                                                 View
-                                            </button>
+                                            </Link>
                                         </td>
                                     </tr>
                                 ))
