@@ -31,7 +31,7 @@ const ProductionOrderForm = () => {
             setLoading(true);
             const { data: st } = await supabase
                 .from('styles')
-                .select('*');
+                .select('id, styleNo, buyerId, buyerName, buyerPO, color, sizeWiseDetails, season_id, season');
             setStyles(st || []);
 
             if (id) {
