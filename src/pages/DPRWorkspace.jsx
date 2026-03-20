@@ -671,9 +671,14 @@ const DPRWorkspace = () => {
                                         <td className="px-6 py-4 text-center">
                                             <Link 
                                                 to={`/production-orders/${row.id}`}
-                                                className="text-[10px] font-black uppercase tracking-widest text-slate-400 border border-slate-200 rounded px-2 py-1 hover:text-indigo-600 hover:border-indigo-200 transition-colors bg-white inline-block shadow-sm"
+                                                title={`View details for ${row.po_number}`}
+                                                onClick={(e) => {
+                                                    console.info("Navigating to:", `/production-orders/${row.id}`);
+                                                    if (row.id) window.location.assign(`/production-orders/${row.id}`);
+                                                }}
+                                                className="text-[10px] font-black uppercase tracking-widest text-slate-400 border border-slate-200 rounded px-2 py-1 hover:text-indigo-600 hover:border-indigo-200 transition-colors bg-white inline-block shadow-sm z-50 relative"
                                             >
-                                                View
+                                                View Details
                                             </Link>
                                         </td>
                                     </tr>
