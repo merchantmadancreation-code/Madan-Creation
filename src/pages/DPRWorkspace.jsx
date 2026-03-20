@@ -67,15 +67,21 @@ const DPRWorkspace = () => {
         e.preventDefault();
         setSaving(true);
         try {
+            // Prepare payload
+            const payload = {
+                ...formData,
+                efficiency: efficiency,
+                report_date: new Date().toISOString().split('T')[0]
+            };
+
+            // Safely pack sizeData into the legacy bundle_start text field for Cutting
+            if (formData.production_stage === 'Cutting' && sizeData.length > 0) {
+                payload.bundle_start = JSON.stringify(sizeData);
+            }
+
             const { error } = await supabase
                 .from('dpr_logs')
-                .insert([{
-                    ...formData,
-                    efficiency: efficiency,
-                    report_date: new Date().toISOString().split('T')[0],
-                    // We can embed size_data into an unused column if needed, or if added to schema. 
-                    // For now keeping it strictly matching existing schema but calculating totals perfectly.
-                }]);
+                .insert([payload]);
 
             if (error) throw error;
             alert("Production Data Posted to ERP successfully!");

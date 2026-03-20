@@ -8,20 +8,54 @@ const ProductionOrderDetails = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const [order, setOrder] = useState(null);
+    const [productionData, setProductionData] = useState(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchOrder = async () => {
-            const { data, error } = await supabase
+        const fetchOrderAndProductionData = async () => {
+            setLoading(true);
+            
+            // 1. Fetch Production Order
+            const { data: po, error } = await supabase
                 .from('production_orders')
                 .select('*, style:styles(styleNo, season, color), buyer:buyers(name)')
                 .eq('id', id)
                 .single();
 
-            if (!error) setOrder(data);
+            if (error || !po) {
+                setLoading(false);
+                return;
+            }
+
+            // 2. Fetch DPR Logs (For Cutting and Generic Overrides)
+            const { data: dprData } = await supabase
+                .from('dpr_logs')
+                .select('*')
+                .eq('order_no', po.order_no);
+
+            // 3. Fetch Stitching
+            const { data: stitchingData } = await supabase
+                .from('stitching_receives')
+                .select('*, stitching_receive_items(size, quantity)')
+                .eq('production_order_id', id);
+
+            // 4. Fetch Finishing
+            const { data: finishingData } = await supabase
+                .from('finishing_receives')
+                .select('*, finishing_receive_items(size, quantity)')
+                .eq('production_order_id', id);
+
+            // 5. Fetch Packing
+            const { data: packingData } = await supabase
+                .from('cartons')
+                .select('*, carton_items(size, quantity)')
+                .eq('production_order_id', id);
+
+            setOrder(po);
+            setProductionData({ dprData, stitchingData, finishingData, packingData });
             setLoading(false);
         };
-        fetchOrder();
+        fetchOrderAndProductionData();
     }, [id]);
 
     if (loading) return <div className="p-12 text-center text-sage-400 italic">Loading order details...</div>;
@@ -115,43 +149,173 @@ const ProductionOrderDetails = () => {
                 <div className="md:col-span-2">
                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-sage-200 h-full">
                         <h3 className="font-bold text-sage-800 text-sm uppercase tracking-wider mb-6 flex items-center gap-2">
-                            <CheckCircle size={16} className="text-sage-400" /> Color & Size Breakdown
+                            <CheckCircle size={16} className="text-sage-400" /> Stage-by-Stage Size Matrix
                         </h3>
 
-                        {order.quantity_breakdown && order.quantity_breakdown.length > 0 ? (
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-sm text-left">
-                                    <thead>
-                                        <tr className="border-b border-sage-100">
-                                            <th className="py-3 font-bold text-sage-400 text-[10px] uppercase tracking-widest w-1/4">Fabric Color</th>
-                                            {Object.keys(order.quantity_breakdown[0].sizes).map(size => (
-                                                <th key={size} className="py-3 font-bold text-sage-400 text-[10px] uppercase tracking-widest text-center">{size}</th>
-                                            ))}
-                                            <th className="py-3 font-bold text-sage-400 text-[10px] uppercase tracking-widest text-right">Row Total</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-sage-50">
-                                        {order.quantity_breakdown.map((row, idx) => (
-                                            <tr key={idx} className="group hover:bg-sage-50/50 transition-colors">
-                                                <td className="py-4 font-bold text-sage-800 pl-2 border-l-4 border-transparent group-hover:border-sage-400">{row.color}</td>
-                                                {Object.entries(row.sizes).map(([size, qty]) => (
-                                                    <td key={size} className="py-4 text-center font-medium text-sage-600">
-                                                        {qty > 0 ? qty : <span className="text-sage-200">-</span>}
-                                                    </td>
+                        {(() => {
+                            if (!order || !order.quantity_breakdown || !productionData) {
+                                return (
+                                    <div className="py-12 text-center border-2 border-dashed border-sage-100 rounded-xl">
+                                        <p className="text-sage-400 italic">No breakdown details available.</p>
+                                    </div>
+                                );
+                            }
+
+                            const allSizes = new Set();
+                            order.quantity_breakdown.forEach(row => {
+                                Object.keys(row.sizes).forEach(size => allSizes.add(size));
+                            });
+                            
+                            const sizeList = Array.from(allSizes).sort();
+                            const matrix = [];
+
+                            // 1. Planned
+                            const plannedMap = {};
+                            let totalPlanned = 0;
+                            order.quantity_breakdown.forEach(row => {
+                                Object.entries(row.sizes).forEach(([s, q]) => {
+                                    const qty = Number(q) || 0;
+                                    plannedMap[s] = (plannedMap[s] || 0) + qty;
+                                    totalPlanned += qty;
+                                });
+                            });
+                            matrix.push({ stage: 'Planned Target', sizes: plannedMap, total: totalPlanned });
+
+                            // Helper for DPR Logs generic parsing
+                            const parseDPR = (stageName, targetMap, currentTotal) => {
+                                let tc = currentTotal;
+                                let hasG = false;
+                                productionData.dprData?.filter(d => d.production_stage === stageName).forEach(log => {
+                                    try {
+                                        if (log.bundle_start && typeof log.bundle_start === 'string' && (log.bundle_start.startsWith('{') || log.bundle_start.startsWith('['))) {
+                                            const parsed = JSON.parse(log.bundle_start);
+                                            if (Array.isArray(parsed)) {
+                                                parsed.forEach(item => {
+                                                    targetMap[item.size] = (targetMap[item.size] || 0) + (Number(item.actual) || 0);
+                                                    tc += (Number(item.actual) || 0);
+                                                });
+                                            } else if (typeof parsed === 'object') {
+                                                Object.entries(parsed).forEach(([s, q]) => {
+                                                    targetMap[s] = (targetMap[s] || 0) + (Number(q) || 0);
+                                                    tc += (Number(q) || 0);
+                                                });
+                                            }
+                                        } else if (Number(log.actual_produced) > 0) {
+                                            targetMap['generic'] = (targetMap['generic'] || 0) + (Number(log.actual_produced) || 0);
+                                            tc += (Number(log.actual_produced) || 0);
+                                            hasG = true;
+                                        }
+                                    } catch(err) {
+                                        if (Number(log.actual_produced) > 0) {
+                                            targetMap['generic'] = (targetMap['generic'] || 0) + (Number(log.actual_produced) || 0);
+                                            tc += (Number(log.actual_produced) || 0);
+                                            hasG = true;
+                                        }
+                                    }
+                                });
+                                return { tc, hasG };
+                            };
+
+                            // 2. Cutting
+                            const cutMap = {};
+                            const cutRes = parseDPR('Cutting', cutMap, 0);
+                            matrix.push({ stage: 'Cutting', sizes: cutMap, total: cutRes.tc, hasGeneric: cutRes.hasG });
+
+                            // 3. Stitching
+                            const stitchMap = {};
+                            let totalStitch = 0;
+                            productionData.stitchingData?.forEach(batch => {
+                                batch.stitching_receive_items?.forEach(item => {
+                                    stitchMap[item.size] = (stitchMap[item.size] || 0) + (Number(item.quantity) || 0);
+                                    totalStitch += (Number(item.quantity) || 0);
+                                });
+                            });
+                            const stitchRes = parseDPR('Stitching', stitchMap, totalStitch);
+                            matrix.push({ stage: 'Stitching', sizes: stitchMap, total: stitchRes.tc, hasGeneric: stitchRes.hasG });
+
+                            // 4. Finishing
+                            const finMap = {};
+                            let totalFin = 0;
+                            productionData.finishingData?.forEach(batch => {
+                                batch.finishing_receive_items?.forEach(item => {
+                                    finMap[item.size] = (finMap[item.size] || 0) + (Number(item.quantity) || 0);
+                                    totalFin += (Number(item.quantity) || 0);
+                                });
+                            });
+                            const finRes = parseDPR('Finishing', finMap, totalFin);
+                            matrix.push({ stage: 'Finishing', sizes: finMap, total: finRes.tc, hasGeneric: finRes.hasG });
+
+                            // 5. Packing
+                            const packMap = {};
+                            let totalPack = 0;
+                            productionData.packingData?.forEach(batch => {
+                                batch.carton_items?.forEach(item => {
+                                    packMap[item.size] = (packMap[item.size] || 0) + (Number(item.quantity) || 0);
+                                    totalPack += (Number(item.quantity) || 0);
+                                });
+                            });
+                            const packRes = parseDPR('Packing', packMap, totalPack);
+                            matrix.push({ stage: 'Packing', sizes: packMap, total: packRes.tc, hasGeneric: packRes.hasG });
+
+                            return (
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-sm text-center">
+                                        <thead>
+                                            <tr className="border-b-2 border-sage-200 bg-sage-50/50">
+                                                <th className="py-4 px-4 font-black text-slate-800 text-[11px] uppercase tracking-widest text-left rounded-tl-xl w-32">Production Stage</th>
+                                                {sizeList.map(size => (
+                                                    <th key={size} className="py-4 px-3 font-black text-sage-600 text-[11px] uppercase tracking-widest">{size}</th>
                                                 ))}
-                                                <td className="py-4 text-right font-bold text-sage-900 pr-2 bg-sage-50/30">
-                                                    {Object.values(row.sizes).reduce((a, b) => a + Number(b), 0).toFixed(2)}
-                                                </td>
+                                                <th className="py-4 px-4 font-black text-indigo-700 text-[11px] uppercase tracking-widest text-right rounded-tr-xl">Total pcs</th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        ) : (
-                            <div className="py-12 text-center border-2 border-dashed border-sage-100 rounded-xl">
-                                <p className="text-sage-400 italic">No breakdown details available.</p>
-                            </div>
-                        )}
+                                        </thead>
+                                        <tbody className="divide-y divide-sage-100">
+                                            {matrix.map((row, idx) => {
+                                                const isPlanned = row.stage === 'Planned Target';
+                                                return (
+                                                    <tr key={idx} className={clsx(
+                                                        "group transition-all hover:bg-sage-50",
+                                                        isPlanned ? "bg-indigo-50/30" : "bg-white"
+                                                    )}>
+                                                        <td className={clsx(
+                                                            "py-5 px-4 text-left font-black tracking-wider text-xs border-l-4",
+                                                            isPlanned ? "border-indigo-400 text-indigo-800" :
+                                                            row.stage === 'Cutting' ? "border-emerald-400 text-emerald-800" :
+                                                            row.stage === 'Stitching' ? "border-blue-400 text-blue-800" :
+                                                            row.stage === 'Finishing' ? "border-amber-400 text-amber-800" :
+                                                            "border-teal-400 text-teal-800"
+                                                        )}>
+                                                            {row.stage}
+                                                        </td>
+                                                        {sizeList.map(size => {
+                                                            const val = row.sizes[size] || 0;
+                                                            return (
+                                                                <td key={size} className={clsx(
+                                                                    "py-5 px-3 font-semibold",
+                                                                    val > 0 ? "text-sage-800" : "text-sage-300"
+                                                                )}>
+                                                                    {val > 0 ? val.toLocaleString() : '-'}
+                                                                </td>
+                                                            );
+                                                        })}
+                                                        <td className="py-5 px-4 text-right">
+                                                            <div className="font-black text-base text-slate-800">
+                                                                {row.total.toLocaleString()}
+                                                            </div>
+                                                            {row.hasGeneric && row.sizes['generic'] > 0 && (
+                                                                <div className="text-[9px] font-bold text-red-500 uppercase tracking-widest mt-1 bg-red-50/50 py-0.5 px-1 rounded inline-block">
+                                                                    + {row.sizes['generic']} Unsized
+                                                                </div>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            );
+                        })()}
                     </div>
                 </div>
             </div>
