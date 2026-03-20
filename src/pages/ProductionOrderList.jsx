@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { Plus, Search, Edit, Eye, Filter, Calendar, User, Tag, Clock } from 'lucide-react';
+import { Plus, Search, Edit, Eye, Filter, Calendar, User, Tag, Clock, Trash2 } from 'lucide-react';
 import clsx from 'clsx';
 
 const ProductionOrderList = () => {
@@ -25,6 +25,26 @@ const ProductionOrderList = () => {
         };
         fetchOrders();
     }, []);
+
+    const handleDelete = async (id) => {
+        if (!window.confirm("Are you sure you want to delete this Production Order? This action cannot be undone.")) return;
+        
+        try {
+            const { error } = await supabase
+                .from('production_orders')
+                .delete()
+                .eq('id', id);
+                
+            if (error) throw error;
+            
+            // Remove from local state
+            setOrders(orders.filter(order => order.id !== id));
+            alert("Production Order deleted successfully.");
+        } catch (error) {
+            console.error("Error deleting production order:", error);
+            alert("Failed to delete the Production Order. It may be linked to existing production logs.");
+        }
+    };
 
     const filteredOrders = orders.filter(o => {
         const orderNo = o.order_no || '';
@@ -140,9 +160,16 @@ const ProductionOrderList = () => {
                                             <Link to={`/production-orders/${order.id}`} className="p-1.5 rounded-lg text-sage-600 hover:bg-sage-100 transition-colors">
                                                 <Eye size={16} />
                                             </Link>
-                                            <Link to={`/production-orders/edit/${order.id}`} className="p-1.5 rounded-lg text-sage-600 hover:bg-sage-100 transition-colors">
+                                            <Link to={`/production-orders/edit/${order.id}`} className="p-1.5 rounded-lg text-sage-600 hover:bg-sage-100 transition-colors" title="Edit">
                                                 <Edit size={16} />
                                             </Link>
+                                            <button 
+                                                onClick={() => handleDelete(order.id)} 
+                                                className="p-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                                                title="Delete"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
