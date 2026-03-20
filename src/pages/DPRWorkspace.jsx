@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { 
     Activity, Download, RefreshCw, Search, Calendar, Package,
@@ -10,6 +11,7 @@ import { useProduction } from '../context/ProductionContext';
 import { usePurchaseOrder } from '../context/PurchaseOrderContext';
 
 const DPRWorkspace = () => {
+    const navigate = useNavigate();
     const { buyers = [], lines = [] } = useProduction();
     const { styles = [] } = usePurchaseOrder();
     
@@ -667,7 +669,10 @@ const DPRWorkspace = () => {
                                         <td className="px-6 py-4 text-sm font-black text-slate-600 text-right">{row.packing}</td>
                                         <td className="px-6 py-4 text-sm font-black text-indigo-600 text-right">{row.balance}</td>
                                         <td className="px-6 py-4 text-center">
-                                            <button className="text-[10px] font-black uppercase tracking-widest text-slate-400 border border-slate-200 rounded px-2 py-1 hover:text-indigo-600 hover:border-indigo-200 transition-colors bg-white">
+                                            <button 
+                                                onClick={() => navigate(`/production-orders/${row.id}`)}
+                                                className="text-[10px] font-black uppercase tracking-widest text-slate-400 border border-slate-200 rounded px-2 py-1 hover:text-indigo-600 hover:border-indigo-200 transition-colors bg-white"
+                                            >
                                                 View
                                             </button>
                                         </td>
