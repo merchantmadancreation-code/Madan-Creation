@@ -625,7 +625,7 @@ export const PurchaseOrderProvider = ({ children }) => {
             fabricIssues, addFabricIssue, updateFabricIssueStatus, deleteFabricIssue,
             cuttingOrders, setCuttingOrders,
             schemaError, setSchemaError,
-            error, setError, loading
+            error, setError
         }}>
             {children}
         </PurchaseOrderContext.Provider>
