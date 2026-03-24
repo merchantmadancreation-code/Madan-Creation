@@ -52,7 +52,7 @@ const BarcodeModal = ({ item, isOpen, onClose }) => {
             }
             svg {
                 max-width: 100%;
-                height: 35px !important;
+                height: 65px !important;
                 margin: 0 !important;
             }
         `);
@@ -110,7 +110,7 @@ const BarcodeModal = ({ item, isOpen, onClose }) => {
                                     <Barcode
                                         value={val}
                                         width={1.5}
-                                        height={40}
+                                        height={65}
                                         fontSize={12}
                                         margin={0}
                                         format="CODE128"
@@ -121,7 +121,7 @@ const BarcodeModal = ({ item, isOpen, onClose }) => {
                                         <Barcode
                                             value={val}
                                             width={1.5}
-                                            height={40}
+                                            height={65}
                                             margin={0}
                                             format="CODE128"
                                             renderer="svg"
