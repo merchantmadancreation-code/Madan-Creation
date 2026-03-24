@@ -14,6 +14,15 @@ const TNAPlanDetails = () => {
     const [loading, setLoading] = useState(true);
     const [syncing, setSyncing] = useState(false);
     const [activeTab, setActiveTab] = useState('list'); // 'list' or 'gantt'
+    const [productionStats, setProductionStats] = useState({
+        fabricInhouse: 0,
+        cutting: 0,
+        stitching: 0,
+        finishing: 0,
+        packing: 0,
+        fiDate: null,
+        dispatchDate: null
+    });
 
     const fetchPlanDetails = async () => {
         setLoading(true);
@@ -34,8 +43,62 @@ const TNAPlanDetails = () => {
             .single();
 
         if (error) console.error("Error fetching plan:", error);
-        else setPlan(data);
+        else {
+            setPlan(data);
+            if (data?.production_orders) {
+                fetchProductionStats(
+                    data.production_orders.id, 
+                    data.production_orders.order_no, 
+                    data.production_orders.style?.styleNo
+                );
+            }
+        }
         setLoading(false);
+    };
+
+    const fetchProductionStats = async (orderId, orderNo, styleNo) => {
+        try {
+            // 1. Fabric inhouse from Challans
+            const { data: challans } = await supabase.from('challans').select('poId, items');
+            let fabric = 0;
+            challans?.forEach(c => {
+                c.items?.forEach(item => {
+                    const qty = Number(item.quantity) || 0;
+                    if (c.poId === orderId || (styleNo && item.styleNo === styleNo)) {
+                        fabric += qty;
+                    }
+                });
+            });
+
+            // 2. Cutting
+            const { data: cuttings } = await supabase.from('cutting_orders').select('total_cut_qty').eq('order_id', orderId);
+            const totalCut = cuttings?.reduce((sum, c) => sum + (c.total_cut_qty || 0), 0) || 0;
+
+            // 3. Stitching
+            const { data: stitches } = await supabase.from('stitching_receives').select('stitching_receive_items(quantity)').eq('production_order_id', orderId);
+            const totalStitch = stitches?.reduce((sum, r) => sum + (r.stitching_receive_items?.reduce((s, i) => s + (i.quantity || 0), 0) || 0), 0) || 0;
+
+            // 4. Finishing & Packing from DPR logs
+            const { data: dprLogs } = await supabase.from('dpr_logs').select('production_stage, actual_produced').eq('order_no', orderNo);
+            let totalFinish = 0;
+            let totalPack = 0;
+            dprLogs?.forEach(log => {
+                const val = parseFloat(log.actual_produced) || 0;
+                if (log.production_stage === 'Finishing') totalFinish += val;
+                if (log.production_stage === 'Packing') totalPack += val;
+            });
+
+            setProductionStats(prev => ({
+                ...prev,
+                fabricInhouse: parseFloat(fabric.toFixed(2)),
+                cutting: totalCut,
+                stitching: totalStitch,
+                finishing: totalFinish,
+                packing: totalPack
+            }));
+        } catch (error) {
+            console.error("Error fetching production stats:", error);
+        }
     };
 
     useEffect(() => {
@@ -113,6 +176,16 @@ const TNAPlanDetails = () => {
     useEffect(() => {
         if (plan && plan.tna_plan_tasks?.length > 0) {
             autoUpdateTasks();
+
+            // Extract FI and Dispatch Dates
+            const fiTask = plan.tna_plan_tasks.find(t => t.task_name.toLowerCase().includes('final inspection') || t.task_name.toLowerCase().includes('fi '));
+            const dispatchTask = plan.tna_plan_tasks.find(t => t.task_name.toLowerCase().includes('dispatch'));
+
+            setProductionStats(prev => ({
+                ...prev,
+                fiDate: fiTask ? (fiTask.actual_end_date || fiTask.planned_end_date) : null,
+                dispatchDate: dispatchTask ? (dispatchTask.actual_end_date || dispatchTask.planned_end_date) : null
+            }));
         }
     }, [plan?.id]);
 
@@ -147,6 +220,13 @@ const TNAPlanDetails = () => {
             default: return <Calendar size={18} />;
         }
     };
+
+    const StatCard = ({ title, value, bg = "bg-gray-50", text = "text-gray-800", isDate }) => (
+        <div className={`${bg} p-3 rounded-xl border border-gray-200 flex flex-col justify-center transition-all hover:shadow-md`}>
+             <div className="text-[10px] uppercase font-bold text-gray-500 tracking-wider mb-1">{title}</div>
+             <div className={`font-black ${isDate ? 'text-sm' : 'text-xl'} ${text} truncate`}>{value}</div>
+        </div>
+    );
 
     return (
         <div className="space-y-6 animate-in fade-in duration-300">
@@ -186,6 +266,32 @@ const TNAPlanDetails = () => {
                         </div>
                     </div>
                 </div>
+            </div>
+
+            {/* Production Details Banner */}
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 mb-6">
+                <StatCard 
+                    title="Fabric Inhouse" 
+                    value={productionStats.fabricInhouse > 0 ? `${productionStats.fabricInhouse}m` : '0m'} 
+                    bg={productionStats.fabricInhouse > 0 ? 'bg-indigo-50 border-indigo-100' : 'bg-gray-50'} 
+                    text={productionStats.fabricInhouse > 0 ? 'text-indigo-700' : 'text-gray-500'} 
+                />
+                <StatCard title="Cutting" value={productionStats.cutting} />
+                <StatCard title="Stitching" value={productionStats.stitching} />
+                <StatCard title="Finishing" value={productionStats.finishing} />
+                <StatCard title="Packing" value={productionStats.packing} />
+                <StatCard 
+                    title="FI Date" 
+                    value={productionStats.fiDate ? format(new Date(productionStats.fiDate), 'dd MMM yyyy') : 'Not Set'} 
+                    isDate 
+                    bg="bg-amber-50" text="text-amber-700"
+                />
+                <StatCard 
+                    title="Dispatch Date" 
+                    value={productionStats.dispatchDate ? format(new Date(productionStats.dispatchDate), 'dd MMM yyyy') : 'Not Set'} 
+                    isDate 
+                    bg="bg-emerald-50" text="text-emerald-700"
+                />
             </div>
 
             {/* Toggle View */}
