@@ -449,7 +449,7 @@ export const generatePDF = (po, print = false, suppliers = []) => {
         addRowMid("Expiry Date :", formatDate(normalizedPO.validity));
 
         // -- Col 3: Attached Image --
-        if (normalizedPO.attachment && normalizedPO.attachment.startsWith('data:image')) {
+        if (normalizedPO.attachment && typeof normalizedPO.attachment === 'string' && normalizedPO.attachment.startsWith('data:image')) {
             try {
                 // Determine layout: Fill box preserving some margin
                 const imgBoxW = col3W - 2;
