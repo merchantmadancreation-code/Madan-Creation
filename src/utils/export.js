@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
+import { supabase } from '../lib/supabase';
 
 console.log("export.js module loaded"); // Debug log
 
@@ -305,7 +306,7 @@ export const exportInventoryToExcel = (inventory) => {
     }
 };
 
-export const generatePDF = (po, print = false, suppliers = []) => {
+export const generatePDF = async (po, print = false, suppliers = []) => {
     try {
         const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
         const pageWidth = doc.internal.pageSize.width;
@@ -463,12 +464,39 @@ export const generatePDF = (po, print = false, suppliers = []) => {
         addRowMid("Expiry Date :", formatDate(normalizedPO.validity));
 
         // -- Col 3: Attached Image --
+        let displayImg = null;
         if (normalizedPO.attachment && typeof normalizedPO.attachment === 'string' && normalizedPO.attachment.startsWith('data:image')) {
+            displayImg = normalizedPO.attachment;
+        } else if (normalizedPO.items && normalizedPO.items.length > 0) {
+            // Fetch style image from Supabase if not attached directly to PO
+            const firstItem = normalizedPO.items[0];
+            const searchStyleNo = firstItem.styleNo || firstItem.articleCode || firstItem.sku;
+            if (searchStyleNo) {
+                try {
+                    const { data } = await supabase
+                        .from('styles')
+                        .select('image')
+                        .or(`styleNo.eq."${searchStyleNo}",articleCode.eq."${searchStyleNo}"`)
+                        .not('image', 'is', null)
+                        .limit(1)
+                        .single();
+                        
+                    if (data && data.image) {
+                        displayImg = data.image;
+                    }
+                } catch (imgFetchErr) {
+                    console.warn("Could not fetch style image for PDF", imgFetchErr);
+                }
+            }
+        }
+
+        if (displayImg && typeof displayImg === 'string' && displayImg.startsWith('data:image')) {
             try {
                 // Determine layout: Fill box preserving some margin
+                const imgFormat = displayImg.includes('image/png') ? 'PNG' : (displayImg.includes('image/webp') ? 'WEBP' : 'JPEG');
                 const imgBoxW = col3W - 2;
                 const imgBoxH = gridH - 2;
-                doc.addImage(normalizedPO.attachment, 'JPEG', line2X + 1, gridY + 1, imgBoxW, imgBoxH, undefined, 'FAST');
+                doc.addImage(displayImg, imgFormat, line2X + 1, gridY + 1, imgBoxW, imgBoxH, undefined, 'FAST');
             } catch (e) {
                 console.warn("Could not add image rendering", e);
             }
