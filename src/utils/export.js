@@ -399,13 +399,12 @@ export const generatePDF = (po, print = false, suppliers = []) => {
             { l: "Address :", v: getVal(sup.address) },
             { l: "GST No. :", v: getVal(sup.gstin) },
             { l: "Mobile No. :", v: getVal(sup.mobile) },
-            { l: "Email :", v: getVal(sup.email) },
-            { l: "Remarks :", v: getVal(normalizedPO.terms?.generalTerms) }
+            { l: "Email :", v: getVal(sup.email) }
         ];
 
         let leftH = 6; // padding
         vendRows.forEach(r => {
-            if (!r.v && r.l !== "Remarks :") return;
+            if (!r.v) return;
             const split = doc.splitTextToSize(getVal(r.v, "-"), col1W - 25);
             leftH += (split.length * 4.5);
         });
@@ -427,7 +426,7 @@ export const generatePDF = (po, print = false, suppliers = []) => {
         const leftValX = margin + 22; // Extended spacing for label
 
         const addRowLeft = (lbl, val) => {
-            if (!val && lbl !== "Remarks :") return;
+            if (!val) return;
             doc.setFont("helvetica", "bold");
             doc.text(lbl, leftLabelX, leftY);
             doc.setFont("helvetica", "normal");
