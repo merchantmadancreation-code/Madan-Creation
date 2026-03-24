@@ -19,18 +19,32 @@ const ChallanForm = () => {
     const [lastResetId, setLastResetId] = useState(null);
 
     const openBaleModal = (index) => {
-        const item = watch(`items.${index}`);
+        const item = getValues(`items.${index}`);
+        const currentRolls = getValues(`items.${index}.rolls`);
         setCurrentBaleItemIndex(index);
-        // Load existing details or start with 3 empty rows
-        if (item.baleDetails && item.baleDetails.length > 0) {
-            setCurrentBaleDetails(item.baleDetails);
+        
+        const rollCountStr = currentRolls || (item ? item.rolls : '');
+        const rollCount = parseInt(rollCountStr, 10);
+        
+        // Load existing details or start with empty rows based on rollCount
+        let details = [];
+        if (item && item.baleDetails && item.baleDetails.length > 0) {
+            details = [...item.baleDetails];
+            // Auto add more rows if the entered roll count is greater than current rows
+            if (!isNaN(rollCount) && rollCount > details.length) {
+                const diff = rollCount - details.length;
+                for (let i = 0; i < diff; i++) {
+                    details.push({ baleNo: `Roll ${details.length + 1}`, qty: '' });
+                }
+            }
         } else {
-            setCurrentBaleDetails([
-                { baleNo: '', qty: '' },
-                { baleNo: '', qty: '' },
-                { baleNo: '', qty: '' }
-            ]);
+            const initialCount = !isNaN(rollCount) && rollCount > 0 ? rollCount : 3;
+            details = Array.from({ length: initialCount }, (_, i) => ({
+                baleNo: `Roll ${i + 1}`,
+                qty: ''
+            }));
         }
+        setCurrentBaleDetails(details);
         setShowBaleModal(true);
     };
 
@@ -52,7 +66,7 @@ const ChallanForm = () => {
     // Filter active POs
     const activePOs = purchaseOrders; // Can filter by status if needed
 
-    const { register, control, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm({
+    const { register, control, handleSubmit, watch, setValue, reset, getValues, formState: { errors } } = useForm({
         defaultValues: {
             date: new Date().toISOString().split('T')[0],
             challanNo: '',
