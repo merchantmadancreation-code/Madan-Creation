@@ -8,59 +8,76 @@ import Papa from 'papaparse';
 
 import { supabase } from '../lib/supabase';
 
-const StyleCard = ({ style, toggleSelect, selected, handleDelete }) => {
-    const [image, setImage] = useState(style.image || null);
-    const [loadingImage, setLoadingImage] = useState(!style.image);
+const LazyDbImage = ({ styleId, styleNo, staticImage, className, fallbackClassName }) => {
+    const [image, setImage] = useState(staticImage || null);
+    const [loadingImage, setLoadingImage] = useState(!staticImage);
+    const [fetched, setFetched] = useState(!!staticImage);
+    const ref = useRef(null);
 
     useEffect(() => {
-        const fetchImage = async () => {
-            if (style.image || image) return;
+        if (!styleId || fetched) return;
 
-            // INCREASED DELAY: Give the main system core more time to breathe
-            // Random jitter helps distribute the load over time
-            const baseDelay = 3000; // 3 seconds wait minimum
-            const jitter = Math.random() * 5000; // up to 5 more seconds
-            await new Promise(r => setTimeout(r, baseDelay + jitter));
-
-            if (!style.id) return;
-
-            setLoadingImage(true);
-            try {
-                // Check if we already have it in local state to avoid redundant calls
-                const { data, error } = await supabase
+        const observer = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting) {
+                observer.unobserve(ref.current);
+                setFetched(true);
+                
+                supabase
                     .from('styles')
                     .select('image')
-                    .eq('id', style.id)
-                    .single();
-
-                if (error) {
-                    if (error.code === 'PGRST116') return; // Not found, ignore
-                    throw error;
-                }
-                if (data?.image) setImage(data.image);
-            } catch (err) {
-                console.warn(`Soft fail fetching image for style ${style.styleNo || style.id}:`, err.message);
-            } finally {
-                setLoadingImage(false);
+                    .eq('id', styleId)
+                    .single()
+                    .then(({ data, error }) => {
+                        if (data?.image) setImage(data.image);
+                        setLoadingImage(false);
+                    })
+                    .catch(e => {
+                        console.warn('Lazy img fetch error:', e);
+                        setLoadingImage(false);
+                    });
             }
+        }, {
+            rootMargin: '200px', // Pre-fetch slightly before appearing
+            threshold: 0
+        });
+
+        if (ref.current) {
+            observer.observe(ref.current);
+        }
+
+        return () => {
+            if (ref.current) observer.unobserve(ref.current);
         };
+    }, [styleId, fetched]);
 
-        fetchImage();
-    }, [style.id, style.image]);
+    if (image) {
+        return <img src={image} alt={styleNo} className={className} />;
+    }
 
+    return (
+        <div ref={ref} className={fallbackClassName}>
+            {loadingImage ? (
+                <div className="flex flex-col items-center justify-center gap-1 w-full h-full">
+                    <Loader2 className="animate-spin text-indigo-500" size={16} />
+                </div>
+            ) : (
+                <span className="text-slate-400 opacity-50 text-2xl">✂️</span>
+            )}
+        </div>
+    );
+};
+
+const StyleCard = ({ style, toggleSelect, selected, handleDelete }) => {
     return (
         <div className="group bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-lg transition-all duration-500 overflow-hidden flex flex-col h-full">
             <div className="relative aspect-[7/9] overflow-hidden bg-slate-50">
-                {image ? (
-                    <img src={image} alt={style.styleNo} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-                ) : loadingImage ? (
-                    <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-slate-50">
-                        <Loader2 className="animate-spin text-indigo-500" size={24} />
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Loading...</span>
-                    </div>
-                ) : (
-                    <div className="w-full h-full flex items-center justify-center text-6xl opacity-20 grayscale group-hover:grayscale-0 transition-all">✂️</div>
-                )}
+                <LazyDbImage 
+                    styleId={style.id} 
+                    styleNo={style.styleNo} 
+                    staticImage={style.image}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                    fallbackClassName="w-full h-full flex items-center justify-center bg-slate-50"
+                />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500 flex flex-col justify-end p-6">
                     <div className="flex gap-2">
                         <Link to={`/styles/${style.id}`} className="flex-1 bg-white/20 backdrop-blur-md border border-white/30 text-white py-2.5 rounded-2xl flex items-center justify-center gap-2 hover:bg-white hover:text-indigo-600 transition-all font-black text-[10px] uppercase tracking-widest">
@@ -493,11 +510,13 @@ const StyleList = () => {
                                             </td>
                                             <td className="px-4 py-4">
                                                 <div className="w-14 h-14 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center rotate-3 group-hover:rotate-0 transition-transform shadow-sm">
-                                                    {style.image ? (
-                                                        <img src={style.image} alt={style.styleNo} className="w-full h-full object-cover" />
-                                                    ) : (
-                                                        <span className="text-slate-400 opacity-50 text-2xl">✂️</span>
-                                                    )}
+                                                    <LazyDbImage 
+                                                        styleId={style.id} 
+                                                        styleNo={style.styleNo} 
+                                                        staticImage={style.image}
+                                                        className="w-full h-full object-cover"
+                                                        fallbackClassName="w-full h-full flex items-center justify-center bg-slate-50"
+                                                    />
                                                 </div>
                                             </td>
                                             <td className="px-4 py-4">
