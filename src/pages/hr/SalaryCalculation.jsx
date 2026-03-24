@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { CreditCard, Calculator, FileText, Download, CheckCircle, Clock, AlertCircle, RefreshCw, ChevronRight, User } from 'lucide-react';
+import { CreditCard, Calculator, FileText, Download, CheckCircle, Clock, AlertCircle, RefreshCw, ChevronRight, User, Edit, Trash2 } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, getDaysInMonth } from 'date-fns';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import { useAuth } from '../../context/AuthContext';
 
 const SalaryCalculation = () => {
+    const { isAdmin } = useAuth();
     const [month, setMonth] = useState(new Date().getMonth() + 1);
     const [year, setYear] = useState(new Date().getFullYear());
     const [employees, setEmployees] = useState([]);
@@ -151,6 +153,41 @@ const SalaryCalculation = () => {
             })
             .eq('id', salId);
 
+        if (error) alert(error.message);
+        else fetchInitialData();
+    };
+
+    const handleEditSalary = async (salId, currentDays, currentAmount) => {
+        const newDaysStr = prompt("Enter manual present days (use .5 for half days):", currentDays);
+        if (newDaysStr === null || newDaysStr === "" || isNaN(newDaysStr)) return;
+        const newDays = parseFloat(newDaysStr);
+
+        const newAmountStr = prompt("Enter new total salary amount:", currentAmount);
+        if (newAmountStr === null || newAmountStr === "" || isNaN(newAmountStr)) return;
+        const newAmount = parseFloat(newAmountStr);
+
+        const totalDaysInMonth = getDaysInMonth(new Date(year, month - 1));
+
+        const { error } = await supabase
+            .from('hr_salaries')
+            .update({
+                present_days: newDays,
+                absent_days: totalDaysInMonth - newDays,
+                total_salary: Math.round(newAmount)
+            })
+            .eq('id', salId);
+
+        if (error) alert(error.message);
+        else fetchInitialData();
+    };
+
+    const handleDeleteSalary = async (salId) => {
+        if (!confirm("Are you sure you want to delete this salary record?")) return;
+        const { error } = await supabase
+            .from('hr_salaries')
+            .delete()
+            .eq('id', salId);
+        
         if (error) alert(error.message);
         else fetchInitialData();
     };
@@ -342,6 +379,24 @@ const SalaryCalculation = () => {
                                                             className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-md active:scale-95 transition-all"
                                                         >
                                                             Approve
+                                                        </button>
+                                                    </>
+                                                )}
+                                                {isAdmin && sal.status === 'Approved' && (
+                                                    <>
+                                                        <button
+                                                            onClick={() => handleEditSalary(sal.id, sal.present_days, sal.total_salary)}
+                                                            className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                            title="Edit Salary"
+                                                        >
+                                                            <Edit size={14} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeleteSalary(sal.id)}
+                                                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                            title="Delete Salary"
+                                                        >
+                                                            <Trash2 size={14} />
                                                         </button>
                                                     </>
                                                 )}

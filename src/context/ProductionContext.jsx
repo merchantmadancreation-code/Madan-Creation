@@ -43,15 +43,15 @@ export const ProductionProvider = ({ children }) => {
             };
 
             const tables = [
-                { name: 'buyers', setter: setBuyers, select: 'id, name, status' },
-                { name: 'seasons', setter: setSeasons, select: 'id, name, status' },
-                { name: 'garment_categories', setter: setCategories, select: 'id, name, status' },
-                { name: 'units', setter: setUnits, select: 'id, name' },
-                { name: 'production_lines', setter: setLines, select: 'id, name, unit_id, status' },
-                { name: 'workers', setter: setWorkers, select: 'id, worker_code, name, designation, status' },
-                { name: 'machine_types', setter: setMachineTypes, select: 'id, name' },
-                { name: 'machines', setter: setMachines, select: 'id, machine_no, type_id, status' },
-                { name: 'operations_master', setter: setOperations, select: 'id, name, category, standard_rate' }
+                { name: 'buyers', setter: setBuyers, select: '*' },
+                { name: 'seasons', setter: setSeasons, select: '*' },
+                { name: 'garment_categories', setter: setCategories, select: '*' },
+                { name: 'units', setter: setUnits, select: '*' },
+                { name: 'production_lines', setter: setLines, select: '*' },
+                { name: 'workers', setter: setWorkers, select: '*' },
+                { name: 'machine_types', setter: setMachineTypes, select: '*' },
+                { name: 'machines', setter: setMachines, select: '*' },
+                { name: 'operations_master', setter: setOperations, select: '*' }
             ];
 
             for (const table of tables) {

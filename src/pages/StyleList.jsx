@@ -124,7 +124,7 @@ const StyleCard = ({ style, toggleSelect, selected, handleDelete }) => {
 };
 
 const StyleList = () => {
-    const { styles, deleteStyle, updateStyle, addStylesBulk, deleteStylesBulk, loading, error } = usePurchaseOrder();
+    const { styles, deleteStyle, updateStyle, addStylesBulk, updateStylesBulk, deleteStylesBulk, loading, error } = usePurchaseOrder();
     const [searchTerm, setSearchTerm] = useState('');
     const [editingStatusId, setEditingStatusId] = useState(null);
     const [isUploading, setIsUploading] = useState(false);
@@ -202,11 +202,39 @@ const StyleList = () => {
         setIsUploading(true);
         const SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL', '6XL', '7XL'];
 
+        const parseDate = (dateStr) => {
+            if (!dateStr) return null;
+            let dStr = String(dateStr).trim();
+            if (!dStr) return null;
+
+            if (/^\d{4}-\d{2}-\d{2}$/.test(dStr)) return dStr;
+            const parts = dStr.split(/[-/]/);
+            if (parts.length === 3 && parts[2].length === 4) {
+                let p1 = parseInt(parts[0], 10);
+                let p2 = parseInt(parts[1], 10);
+                let day, month;
+                if (p2 > 12) {
+                    month = parts[0].padStart(2, '0');
+                    day = parts[1].padStart(2, '0');
+                } else {
+                    day = parts[0].padStart(2, '0');
+                    month = parts[1].padStart(2, '0');
+                }
+                const year = parts[2];
+                return `${year}-${month}-${day}`;
+            }
+            const d = new Date(dStr);
+            if (!isNaN(d.getTime())) {
+                return d.toISOString().split('T')[0];
+            }
+            return null;
+        };
+
         Papa.parse(file, {
             header: true,
             skipEmptyLines: true,
             complete: async (results) => {
-                const newStyles = results.data.map(row => {
+                const parsedStyles = results.data.map(row => {
                     const styleNo = row['Style No'];
                     const rate = parseFloat(row['Rate']) || 0;
 
@@ -222,11 +250,15 @@ const StyleList = () => {
                         };
                     });
 
+                    const parsedReceivedDate = parseDate(row['PO Received Date']);
+                    const parsedExpiredDate = parseDate(row['PO Expired Date']);
+                    const parsedExtensionDate = parseDate(row['PO Extension Date']);
+
                     // Calculate lead time if not provided
                     let leadTime = row['Lead Time (Days)'];
-                    if (!leadTime && row['PO Received Date'] && row['PO Expired Date']) {
-                        const start = new Date(row['PO Received Date']);
-                        const end = new Date(row['PO Expired Date']);
+                    if (!leadTime && parsedReceivedDate && parsedExpiredDate) {
+                        const start = new Date(parsedReceivedDate);
+                        const end = new Date(parsedExpiredDate);
                         if (!isNaN(start) && !isNaN(end)) {
                             const diffTime = Math.abs(end - start);
                             leadTime = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -244,8 +276,8 @@ const StyleList = () => {
                         season: row['Season / Collection'],
                         status: row['Style Status'] || 'Active',
                         buyerPO: row['Buyer PO No'],
-                        buyerPOReceivedDate: row['PO Received Date'],
-                        poExpiredDate: row['PO Expired Date'],
+                        buyerPOReceivedDate: parsedReceivedDate,
+                        poExpiredDate: parsedExpiredDate,
                         description: row['Description / Notes'],
                         category: row['Category'],
                         section: row['Section'],
@@ -253,15 +285,50 @@ const StyleList = () => {
                         stitchingRate: row['Stitching Rate'],
                         perPcsAvg: row['Per PCS Avg'],
                         leadTime: leadTime,
-                        poExtensionDate: row['PO Extension Date'],
+                        poExtensionDate: parsedExtensionDate,
                         sizeWiseDetails: sizeWiseDetails
                     };
                 }).filter(s => s.styleNo); // Ensure Style No exists
 
-                if (newStyles.length > 0) {
-                    const result = await addStylesBulk(newStyles);
-                    if (result.success) {
-                        alert(`Successfully uploaded ${result.count} styles!`);
+                if (parsedStyles.length > 0) {
+                    const existingStyleMap = new Map();
+                    styles.forEach(s => {
+                        if (s.styleNo) existingStyleMap.set(s.styleNo.trim().toUpperCase(), s.id);
+                    });
+
+                    const newStyles = [];
+                    const duplicateStyles = [];
+
+                    parsedStyles.forEach(s => {
+                        const styleNoUpper = s.styleNo.trim().toUpperCase();
+                        if (existingStyleMap.has(styleNoUpper)) {
+                            duplicateStyles.push({ ...s, id: existingStyleMap.get(styleNoUpper) });
+                        } else {
+                            newStyles.push(s);
+                        }
+                    });
+
+                    let shouldOverwrite = false;
+                    if (duplicateStyles.length > 0) {
+                        shouldOverwrite = window.confirm(`Found ${duplicateStyles.length} duplicate styles based on Style No.\n\nClick OK to Overwrite them, or Cancel to skip duplicates and only import the ${newStyles.length} new styles.`);
+                    }
+
+                    let importedCount = 0;
+
+                    if (shouldOverwrite && duplicateStyles.length > 0) {
+                        const updateResult = await updateStylesBulk(duplicateStyles);
+                        if (updateResult.success) importedCount += updateResult.count;
+                    }
+
+                    if (newStyles.length > 0) {
+                        const insertResult = await addStylesBulk(newStyles);
+                        if (insertResult.success) importedCount += insertResult.count;
+                    }
+
+                    if (importedCount > 0) {
+                        alert(`Successfully processed ${importedCount} styles!`);
+                    } else if (newStyles.length === 0 && !shouldOverwrite) {
+                        alert("No new styles were imported. Duplicates were skipped.");
                     }
                 } else {
                     alert('No valid styles found in CSV. Please check the template.');

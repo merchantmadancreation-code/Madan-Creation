@@ -1,0 +1,1 @@
+id, created_at, styleNo, buyerPO, buyerName, fabricName, fabricContent, fabricWidth, color, season, description, notes, buyerPOReceivedDate, poExpiredDate, category, section, orderType, leadTime, poExtensionDate, stitchingRate, perPcsAvg, sizeWiseDetails, status, buyerPOCopy, pcsPerSet, setDetails, buyerId

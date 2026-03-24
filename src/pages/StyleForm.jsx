@@ -185,8 +185,21 @@ const StyleForm = () => {
         if (id) {
             success = await updateStyle(id, styleData);
         } else {
-            savedId = await addStyle(styleData);
-            success = !!savedId;
+            // Check for duplicate
+            const existingStyle = styles.find(s => s.styleNo?.trim().toUpperCase() === data.styleNo?.trim().toUpperCase());
+            if (existingStyle) {
+                const overwrite = window.confirm(`Style No "${data.styleNo}" already exists in the system.\n\nClick OK to Overwrite the existing style, or Cancel to Skip and abort saving.`);
+                if (!overwrite) {
+                    setIsSubmitting(false);
+                    return; // Abort
+                } else {
+                    success = await updateStyle(existingStyle.id, styleData);
+                    savedId = existingStyle.id;
+                }
+            } else {
+                savedId = await addStyle(styleData);
+                success = !!savedId;
+            }
         }
 
         setIsSubmitting(false);

@@ -29,9 +29,14 @@ const ProductionOrderForm = () => {
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
-            const { data: st } = await supabase
+            const { data: st, error: stError } = await supabase
                 .from('styles')
-                .select('id, styleNo, buyerId, buyerName, buyerPO, color, sizeWiseDetails, season_id, season');
+                .select('id, styleNo, buyerId, buyerName, buyerPO, color, sizeWiseDetails, season');
+            if (stError) {
+                console.error("fetch styles error:", stError);
+                alert("Error fetching styles: " + stError.message + "\nPlease take a screenshot of this error.");
+            }
+            console.log("Fetched styles count:", st?.length);
             setStyles(st || []);
 
             if (id) {
@@ -49,7 +54,6 @@ const ProductionOrderForm = () => {
 
         // Map season if possible (by name match)
         const matchedSeason = seasons.find(s =>
-            s.id === style.season_id || // if direct link exists
             s.name.toLowerCase() === style.season?.toLowerCase() // name match fallback
         );
 

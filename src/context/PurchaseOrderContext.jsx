@@ -60,24 +60,24 @@ export const PurchaseOrderProvider = ({ children }) => {
                 };
 
                 const fetchTasks = [
-                    { name: 'suppliers', query: supabase.from('suppliers').select('id, name').limit(100), setter: setSuppliers },
+                    { name: 'suppliers', query: supabase.from('suppliers').select('*').order('name', { ascending: true }).limit(500), setter: setSuppliers },
                     { 
                         name: 'items', 
-                        query: supabase.from('items').select('id, name, sku, category, status').limit(100), 
+                        query: supabase.from('items').select('*').order('created_at', { ascending: false }).limit(500), 
                         setter: setItems 
                     },
-                    { name: 'purchase_orders', query: supabase.from('purchase_orders').select('id, created_at, poNumber, date, supplierId, status').limit(50), setter: setPurchaseOrders },
+                    { name: 'purchase_orders', query: supabase.from('purchase_orders').select('*').order('created_at', { ascending: false }).limit(500), setter: setPurchaseOrders },
                     { 
                         name: 'challans', 
-                        query: supabase.from('challans').select('id, grnNo, date, status').limit(50), 
+                        query: supabase.from('challans').select('*').order('date', { ascending: false }).limit(500), 
                         setter: setChallans 
                     },
-                    { name: 'outward_challans', query: supabase.from('outward_challans').select('id, outChallanNo, date').limit(50), setter: setOutwardChallans },
-                    { name: 'invoices', query: supabase.from('invoices').select('id, invoiceNo, date, status').limit(50), setter: setInvoices },
-                    { name: 'styles', query: supabase.from('styles').select('id, styleNo, status, created_at, buyerPO, buyerId, buyerName, sizeWiseDetails').limit(50), setter: setStyles },
-                    { name: 'material_issues', query: supabase.from('material_issues').select('id, issue_no, status').limit(50), setter: setMaterialIssues },
-                    { name: 'fabric_issues', query: supabase.from('fabric_issues').select('id, issue_no, status').limit(50), setter: setFabricIssues },
-                    { name: 'cutting_orders', query: supabase.from('cutting_orders').select('id, cutting_no, status').limit(50), setter: setCuttingOrders }
+                    { name: 'outward_challans', query: supabase.from('outward_challans').select('*').order('date', { ascending: false }).limit(500), setter: setOutwardChallans },
+                    { name: 'invoices', query: supabase.from('invoices').select('*').order('date', { ascending: false }).limit(500), setter: setInvoices },
+                    { name: 'styles', query: supabase.from('styles').select('id, created_at, styleNo, buyerPO, buyerName, fabricName, fabricContent, fabricWidth, color, season, description, notes, buyerPOReceivedDate, poExpiredDate, category, section, orderType, leadTime, poExtensionDate, stitchingRate, perPcsAvg, sizeWiseDetails, status, buyerPOCopy, pcsPerSet, setDetails, buyerId').order('created_at', { ascending: false }).limit(5000), setter: setStyles },
+                    { name: 'material_issues', query: supabase.from('material_issues').select('*').limit(500), setter: setMaterialIssues },
+                    { name: 'fabric_issues', query: supabase.from('fabric_issues').select('*').limit(500), setter: setFabricIssues },
+                    { name: 'cutting_orders', query: supabase.from('cutting_orders').select('*').limit(500), setter: setCuttingOrders }
                 ];
 
                 const results = [];
@@ -535,6 +535,30 @@ export const PurchaseOrderProvider = ({ children }) => {
         }
     };
 
+    const updateStylesBulk = async (updatedStyles) => {
+        const sanitizedStyles = updatedStyles.map(s => sanitizeStyleData(s));
+        // Upsert requires the primary key `id` to overwrite
+        const { data, error } = await supabase.from('styles').upsert(sanitizedStyles).select('id');
+
+        if (error) {
+            console.error("Error updating bulk styles:", error);
+            alert(`Error updating bulk styles: ${error.message}`);
+            return { success: false, error };
+        } else {
+            setStyles(prev => {
+                const newStyles = [...prev];
+                sanitizedStyles.forEach(updated => {
+                    const idx = newStyles.findIndex(s => s.id === updated.id);
+                    if (idx !== -1) {
+                        newStyles[idx] = { ...newStyles[idx], ...updated };
+                    }
+                });
+                return newStyles;
+            });
+            return { success: true, count: data.length };
+        }
+    };
+
     const deleteStylesBulk = async (ids) => {
         const { error } = await supabase.from('styles').delete().in('id', ids);
         if (error) {
@@ -619,7 +643,7 @@ export const PurchaseOrderProvider = ({ children }) => {
             challans, addChallan, updateChallan, deleteChallan,
             outwardChallans, addOutwardChallan, updateOutwardChallan, deleteOutwardChallan,
             invoices, addInvoice, updateInvoice, verifyInvoice, deleteInvoice,
-            styles, addStyle, updateStyle, deleteStyle, addStylesBulk, deleteStylesBulk,
+            styles, addStyle, updateStyle, deleteStyle, addStylesBulk, updateStylesBulk, deleteStylesBulk,
             costings, addCosting, updateCosting, deleteCosting,
             materialIssues, setMaterialIssues,
             fabricIssues, addFabricIssue, updateFabricIssueStatus, deleteFabricIssue,
