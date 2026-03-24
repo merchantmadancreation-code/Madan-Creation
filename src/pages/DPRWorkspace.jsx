@@ -241,7 +241,7 @@ const DPRWorkspace = () => {
             setOverviewData(consolidated);
             setKpis({
                 totalOrders: totOrders,
-                fabricStatus: totFabric,
+                fabricStatus: parseFloat(totFabric.toFixed(2)),
                 cutting: totCutting,
                 stitching: totStitching,
                 finishing: totFinishing,
