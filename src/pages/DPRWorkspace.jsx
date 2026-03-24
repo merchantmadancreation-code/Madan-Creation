@@ -116,10 +116,15 @@ const DPRWorkspace = () => {
                 `)
                 .order('created_at', { ascending: false });
 
-            // 2. Fetch Cutting Aggregates
+            // 2. Fetch Challans (for Fabric Received)
+            const { data: challanData } = await supabase
+                .from('challans')
+                .select('poId, items');
+
+            // 2b. Fetch Cutting Aggregates (Used for cut_qty only now)
             const { data: cutData } = await supabase
                 .from('cutting_orders')
-                .select('order_id, total_fabric_received, total_cut_qty');
+                .select('order_id, total_cut_qty');
 
             // 3. Fetch Stitching Aggregates
             const { data: stitchData } = await supabase
@@ -132,10 +137,24 @@ const DPRWorkspace = () => {
                 .select('order_no, production_stage, actual_produced, defects_count');
 
             // Grouping logic
+            const challanMapByPO = {};
+            const challanMapByStyle = {};
+
+            challanData?.forEach(c => {
+                c.items?.forEach(item => {
+                    const qty = Number(item.quantity) || 0;
+                    if (c.poId) {
+                        challanMapByPO[c.poId] = (challanMapByPO[c.poId] || 0) + qty;
+                    }
+                    if (item.styleNo) {
+                        challanMapByStyle[item.styleNo] = (challanMapByStyle[item.styleNo] || 0) + qty;
+                    }
+                });
+            });
+
             const cutMap = {};
             cutData?.forEach(cut => {
-                if(!cutMap[cut.order_id]) cutMap[cut.order_id] = { fabric_rec: 0, cut_qty: 0 };
-                cutMap[cut.order_id].fabric_rec += (Number(cut.total_fabric_received) || 0);
+                if(!cutMap[cut.order_id]) cutMap[cut.order_id] = { cut_qty: 0 };
                 cutMap[cut.order_id].cut_qty += (Number(cut.total_cut_qty) || 0);
             });
 
@@ -173,15 +192,22 @@ const DPRWorkspace = () => {
 
             const consolidated = poData?.map(po => {
                 const poNum = (po.order_no || "").trim();
-                const cuts = cutMap[po.id] || { fabric_rec: 0, cut_qty: 0 };
+                const styleNo = po.styles?.styleNo || 'N/A';
+                
+                const cuts = cutMap[po.id] || { cut_qty: 0 };
                 const stitches = stitchMap[po.id] || 0;
                 const logs = dprMap[poNum] || { cutting: 0, stitching: 0, finishing: 0, packing: 0 };
+
+                // Get Fabric Received (Prefer PO link, fallback to Style No)
+                const fabricRec = challanMapByPO[po.id] || challanMapByStyle[styleNo] || 0;
+                // Format decimal to avoid long trailing numbers
+                const roundedFabricRec = parseFloat(fabricRec.toFixed(2));
 
                 // Combine values from specific specific tables and generic dpr_logs
                 const finalCutting = Math.round(cuts.cut_qty + logs.cutting);
                 const finalStitching = Math.round(stitches + logs.stitching);
 
-                totFabric += cuts.fabric_rec;
+                totFabric += roundedFabricRec;
                 totCutting += finalCutting;
                 totStitching += finalStitching;
                 totFinishing += logs.finishing;
@@ -200,9 +226,9 @@ const DPRWorkspace = () => {
                     style_no: po.styles?.styleNo || 'N/A',
                     image: po.styles?.image,
                     fabric_name: po.styles?.fabricName || 'N/A',
-                    fabric_status: cuts.fabric_rec > 0 ? `${cuts.fabric_rec}m` : '0m',
+                    fabric_status: roundedFabricRec > 0 ? `${roundedFabricRec}m` : '0m',
                     size: sizesStr,
-                    fabric_rec: cuts.fabric_rec,
+                    fabric_rec: roundedFabricRec,
                     cutting: finalCutting,
                     stitching: finalStitching,
                     finishing: logs.finishing,
