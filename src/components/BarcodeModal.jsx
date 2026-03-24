@@ -46,13 +46,21 @@ const BarcodeModal = ({ item, isOpen, onClose }) => {
                 width: 100%;
             }
             .barcode-value {
-                font-size: 9px;
-                margin-top: 1px;
+                font-size: 11px;
+                font-weight: bold;
                 font-family: monospace;
+                white-space: nowrap;
+            }
+            .barcode-and-value {
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
             }
             svg {
                 max-width: 100%;
-                height: 65px !important;
+                height: 80px !important;
                 margin: 0 !important;
             }
         `);
@@ -68,8 +76,10 @@ const BarcodeModal = ({ item, isOpen, onClose }) => {
                 <div class="barcode-label">
                     <div class="barcode-content-wrapper">
                         <div class="item-name">${itm.name}</div>
-                        ${svgHtml}
-                        <div class="barcode-value">${val}</div>
+                        <div class="barcode-and-value">
+                            <div class="barcode-value">${val}</div>
+                            ${svgHtml}
+                        </div>
                     </div>
                 </div>
             `);
@@ -107,28 +117,30 @@ const BarcodeModal = ({ item, isOpen, onClose }) => {
                             return (
                                 <div key={itm.id} className="flex flex-col items-center justify-center p-4 bg-gray-50 rounded-lg border border-gray-100">
                                     <p className="font-semibold text-gray-700 text-xs mb-2 truncate w-full text-center">{itm.name}</p>
-                                    <Barcode
-                                        value={val}
-                                        width={1.5}
-                                        height={65}
-                                        fontSize={12}
-                                        margin={0}
-                                        format="CODE128"
-                                        displayValue={false}
-                                    />
+                                    <div className="flex flex-row items-center gap-3">
+                                        <p className="font-mono text-xs font-bold text-gray-800">{val}</p>
+                                        <Barcode
+                                            value={val}
+                                            width={1.5}
+                                            height={80}
+                                            margin={0}
+                                            format="CODE128"
+                                            displayValue={false}
+                                        />
+                                    </div>
                                     {/* SVG for print extraction */}
                                     <div style={{ display: 'none' }}>
                                         <Barcode
                                             value={val}
                                             width={1.5}
-                                            height={65}
+                                            height={80}
                                             margin={0}
                                             format="CODE128"
                                             renderer="svg"
                                             id={`barcode-svg-${idx}`}
+                                            displayValue={false}
                                         />
                                     </div>
-                                    <p className="font-mono text-[10px] text-gray-500 mt-1">{val}</p>
                                 </div>
                             );
                         })}
