@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
 import { useProduction } from '../context/ProductionContext';
+import { usePurchaseOrder } from '../context/PurchaseOrderContext';
 import { Save, ArrowLeft, Plus, Trash2, Tag, User, Calendar, Layers } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -9,8 +9,8 @@ const ProductionOrderForm = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const { buyers, seasons, refresh } = useProduction();
+    const { styles } = usePurchaseOrder();
 
-    const [styles, setStyles] = useState([]);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
 
@@ -29,17 +29,10 @@ const ProductionOrderForm = () => {
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
-            const { data: st, error: stError } = await supabase
-                .from('styles')
-                .select('id, styleNo, buyerId, buyerName, buyerPO, color, sizeWiseDetails, season');
-            if (stError) {
-                console.error("fetch styles error:", stError);
-                alert("Error fetching styles: " + stError.message + "\nPlease take a screenshot of this error.");
-            }
-            console.log("Fetched styles count:", st?.length);
-            setStyles(st || []);
 
             if (id) {
+                // Must import supabase locally or use global
+                const { supabase } = await import('../lib/supabase');
                 const { data: ord } = await supabase.from('production_orders').select('*').eq('id', id).single();
                 if (ord) setFormData(ord);
             }
@@ -147,6 +140,8 @@ const ProductionOrderForm = () => {
 
         setSaving(true);
         try {
+            // Re-import supabase for save if not globally available
+            const { supabase } = await import('../lib/supabase');
             const cleanData = sanitizeData(formData);
             const { error } = id
                 ? await supabase.from('production_orders').update(cleanData).eq('id', id)
