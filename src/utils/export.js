@@ -382,10 +382,6 @@ export const generatePDF = (po, print = false, suppliers = []) => {
         doc.setLineWidth(0.2);
 
         const gridY = currentY;
-        const gridH = 45; // Fixed height for top info block
-
-        doc.rect(margin, gridY, width, gridH); // Outer box
-
         const col1W = width * 0.48;
         const col2W = width * 0.32;
         const col3W = width - col1W - col2W;
@@ -393,34 +389,53 @@ export const generatePDF = (po, print = false, suppliers = []) => {
         const line1X = margin + col1W;
         const line2X = line1X + col2W;
 
+        doc.setFontSize(8);
+
+        // Pre-calculate heights
+        const sup = normalizedPO.supplierDetails;
+        const vendRows = [
+            { l: "Vendor Name :", v: getVal(sup.name, getVal(normalizedPO.supplierName)) },
+            { l: "Contact Name :", v: getVal(sup.contact) },
+            { l: "Address :", v: getVal(sup.address) },
+            { l: "GST No. :", v: getVal(sup.gstin) },
+            { l: "Mobile No. :", v: getVal(sup.mobile) },
+            { l: "Email :", v: getVal(sup.email) },
+            { l: "Remarks :", v: getVal(normalizedPO.terms?.generalTerms) }
+        ];
+
+        let leftH = 6; // padding
+        vendRows.forEach(r => {
+            if (!r.v && r.l !== "Remarks :") return;
+            const split = doc.splitTextToSize(getVal(r.v, "-"), col1W - 25);
+            leftH += (split.length * 4.5);
+        });
+
+        // PO Details are mostly 1-liners
+        let midH = 6 + (7 * 5.5);
+
+        // Calculate dynamic grid height
+        const gridH = Math.max(45, leftH, midH);
+
+        doc.rect(margin, gridY, width, gridH); // Outer box
         doc.line(line1X, gridY, line1X, gridY + gridH); // Separator 1
         doc.line(line2X, gridY, line2X, gridY + gridH); // Separator 2
 
         // -- Col 1: Vendor details --
-        doc.setFontSize(8);
         doc.setTextColor(0);
         let leftY = gridY + 4;
         const leftLabelX = margin + 2;
-        const leftValX = margin + 20;
+        const leftValX = margin + 22; // Extended spacing for label
 
         const addRowLeft = (lbl, val) => {
             if (!val && lbl !== "Remarks :") return;
             doc.setFont("helvetica", "bold");
             doc.text(lbl, leftLabelX, leftY);
             doc.setFont("helvetica", "normal");
-            const splitVal = doc.splitTextToSize(getVal(val, "-"), col1W - 24);
+            const splitVal = doc.splitTextToSize(getVal(val, "-"), col1W - 25);
             doc.text(splitVal, leftValX, leftY);
             leftY += (splitVal.length * 4.5);
         };
-
-        const sup = normalizedPO.supplierDetails;
-        addRowLeft("Vendor Name :", getVal(sup.name, getVal(normalizedPO.supplierName)));
-        addRowLeft("Contact Name :", getVal(sup.contact));
-        addRowLeft("Address :", getVal(sup.address));
-        addRowLeft("GST No. :", getVal(sup.gstin));
-        addRowLeft("Mobile No. :", getVal(sup.mobile));
-        addRowLeft("Email :", getVal(sup.email));
-        addRowLeft("Remarks :", getVal(normalizedPO.terms?.generalTerms));
+        vendRows.forEach(r => addRowLeft(r.l, r.v));
 
         // -- Col 2: PO details --
         let midY = gridY + 5;
@@ -517,13 +532,13 @@ export const generatePDF = (po, print = false, suppliers = []) => {
             footStyles: { fillColor: [240, 240, 240], textColor: 0, fontStyle: 'bold' },
             columnStyles: {
                 0: { cellWidth: 8, halign: 'center' },
-                1: { cellWidth: 35 },
+                1: { cellWidth: 32 },
                 2: { cellWidth: 25 },
-                3: { cellWidth: 40 },
+                3: { cellWidth: 44 },
                 4: { cellWidth: 15, halign: 'center' },
-                5: { cellWidth: 20, halign: 'center' },
+                5: { cellWidth: 22, halign: 'center' },
                 6: { cellWidth: 20, halign: 'right' },
-                7: { cellWidth: 27, halign: 'right' },
+                7: { cellWidth: 24, halign: 'right' },
             },
             margin: { left: margin, right: margin },
             didDrawPage: (data) => { currentY = data.cursor.y; }
