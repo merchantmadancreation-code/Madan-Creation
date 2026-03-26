@@ -10,7 +10,7 @@ const PurchaseOrderList = () => {
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold text-sage-800">Purchase Orders (v4)</h1>
+                <h1 className="text-2xl font-bold text-sage-800">Purchase Orders</h1>
                 <div className="flex gap-2">
                     <button
                         onClick={() => exportToExcel(purchaseOrders)}

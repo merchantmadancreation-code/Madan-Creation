@@ -552,12 +552,24 @@ export const generatePDF = async (po, print = false, suppliers = []) => {
             });
         }
         
-        // Totals Footer Rows in Table
+        // Use commercial calculations or running totals
+        const finalCalc = normalizedPO.calculations || {};
+        const subtotalValue = runningTotal;
+        const gstValue = finalCalc.gstAmount || (subtotalValue * globalGstRate / 100);
+        const grandTotalValue = finalCalc.finalTotal || (subtotalValue + gstValue);
+
+        // Add Calculation Footer Rows
         tableRows.push([
-            { content: 'Total', colSpan: 4, styles: { halign: 'center', fontStyle: 'bold' } },
-            { content: totalQty.toString(), styles: { fontStyle: 'bold', halign: 'center' } },
-            { content: '', colSpan: 3 },
-            { content: runningTotal.toFixed(2), styles: { fontStyle: 'bold', halign: 'right' } }
+            { content: 'Sub Total', colSpan: 8, styles: { halign: 'right', fontStyle: 'normal' } },
+            { content: subtotalValue.toFixed(2), styles: { halign: 'right' } }
+        ]);
+        tableRows.push([
+            { content: `GST (${globalGstRate}%)`, colSpan: 8, styles: { halign: 'right', fontStyle: 'normal' } },
+            { content: gstValue.toFixed(2), styles: { halign: 'right' } }
+        ]);
+        tableRows.push([
+            { content: 'Grand Total', colSpan: 8, styles: { halign: 'right', fontStyle: 'bold', fillColor: [240, 240, 240] } },
+            { content: grandTotalValue.toFixed(2), styles: { halign: 'right', fontStyle: 'bold', fillColor: [240, 240, 240] } }
         ]);
 
         autoTable(doc, {
@@ -583,31 +595,8 @@ export const generatePDF = async (po, print = false, suppliers = []) => {
         });
 
         if (doc.lastAutoTable && doc.lastAutoTable.finalY) {
-            currentY = doc.lastAutoTable.finalY + 2;
+            currentY = doc.lastAutoTable.finalY + 4;
         }
-
-        // --- 3.1 Detailed Calculations Section ---
-        const finalCalc = normalizedPO.calculations || {};
-        const subtotal = runningTotal;
-        const gstAmt = finalCalc.gstAmount || (subtotal * globalGstRate / 100);
-        const grandTotal = finalCalc.finalTotal || (subtotal + gstAmt);
-
-        const calcX = pageWidth - margin - 60;
-        doc.setFontSize(9);
-        doc.setFont("helvetica", "normal");
-        
-        doc.text("Sub Total:", calcX, currentY);
-        doc.text(subtotal.toFixed(2), pageWidth - margin, currentY, { align: 'right' });
-        currentY += 5;
-        
-        doc.text(`GST (${globalGstRate}%):`, calcX, currentY);
-        doc.text(gstAmt.toFixed(2), pageWidth - margin, currentY, { align: 'right' });
-        currentY += 5;
-        
-        doc.setFont("helvetica", "bold");
-        doc.text("Grand Total:", calcX, currentY);
-        doc.text(grandTotal.toFixed(2), pageWidth - margin, currentY, { align: 'right' });
-        currentY += 8;
 
         // --- 4. Terms and conditions ---
         doc.setFont("helvetica", "bold");
