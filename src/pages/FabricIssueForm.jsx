@@ -137,40 +137,37 @@ const FabricIssueForm = () => {
         if (!scannedCodeRaw) return;
         const scannedCode = scannedCodeRaw.trim();
 
-        // Parse Barcode: GRN-XXXX-ItemIdx-BaleIdx
+        // Parse Barcode: DocNo-ItemIdx-BaleIdx (e.g. 871-1-Roll 1 or INV-101-1-1)
         const lastDash = scannedCode.lastIndexOf('-');
         const secondLastDash = scannedCode.substring(0, lastDash).lastIndexOf('-');
 
         if (lastDash === -1 || secondLastDash === -1) {
-            alert("Invalid barcode format. Expected GRN-ItemIdx-BaleIdx.");
+            alert("Invalid barcode format. Expected DocNo-ItemIdx-RollNo.");
             return;
         }
 
-        const baleIdxStr = scannedCode.substring(lastDash + 1);
-        const itemIdxStr = scannedCode.substring(secondLastDash + 1, lastDash);
+        const baleIdxStr = scannedCode.substring(lastDash + 1).trim();
+        const itemIdxStr = scannedCode.substring(secondLastDash + 1, lastDash).trim();
         const docNo = scannedCode.substring(0, secondLastDash).trim();
 
-        const baleIdx = parseInt(baleIdxStr);
         const itemIdx = parseInt(itemIdxStr);
-
-        if (isNaN(baleIdx) || isNaN(itemIdx)) {
-            alert("Invalid barcode format. Indices are not numbers.");
+        if (isNaN(itemIdx)) {
+            alert("Invalid barcode format. Item index must be a number.");
             return;
         }
 
         // 1. Try Finding in Invoices
-        // Use loose comparison and trimming for robustness
         let sourceDoc = invoices.find(inv =>
-            String(inv.invoiceNo).trim() === docNo ||
-            String(inv.grnNo).trim() === docNo
+            String(inv.invoiceNo).trim().toLowerCase() === docNo.toLowerCase() ||
+            String(inv.grnNo).trim().toLowerCase() === docNo.toLowerCase()
         );
         let isChallan = false;
 
         // 2. If not found, Try Finding in Challans
         if (!sourceDoc) {
             sourceDoc = challans.find(ch =>
-                String(ch.challanNo).trim() === docNo ||
-                String(ch.grnNo).trim() === docNo
+                String(ch.challanNo).trim().toLowerCase() === docNo.toLowerCase() ||
+                String(ch.grnNo).trim().toLowerCase() === docNo.toLowerCase()
             );
             isChallan = !!sourceDoc;
         }
@@ -180,8 +177,8 @@ const FabricIssueForm = () => {
             return;
         }
 
-        // Find Item
-        const docItem = sourceDoc.items && sourceDoc.items[itemIdx - 1]; // 0-based index
+        // Find Item (1-based index)
+        const docItem = sourceDoc.items && sourceDoc.items[itemIdx - 1];
 
         if (!docItem) {
             alert(`Item #${itemIdx} not found in document ${docNo}.`);
@@ -189,18 +186,32 @@ const FabricIssueForm = () => {
         }
 
         // Normalize Bale Details
-        // Invoices use 'bales', Challans use 'baleDetails'
         const balesRaw = isChallan ? docItem.baleDetails : docItem.bales;
-
-        // Check if bales exist
-        if (!balesRaw || !Array.isArray(balesRaw) || balesRaw.length < baleIdx) {
-            alert(`Bale/Roll #${baleIdx} not found for item #${itemIdx}.`);
+        if (!balesRaw || !Array.isArray(balesRaw)) {
+            alert(`No rolls/bales found for item #${itemIdx} in ${docNo}.`);
             return;
         }
 
-        const bale = balesRaw[baleIdx - 1];
+        // Robust Bale Lookup: Match by 1-based index OR by baleNo string
+        let bale = null;
+        const potentialIdx = parseInt(baleIdxStr);
+        
+        if (!isNaN(potentialIdx) && potentialIdx > 0 && potentialIdx <= balesRaw.length) {
+            bale = balesRaw[potentialIdx - 1];
+        } else {
+            // Match by string (case-insensitive)
+            bale = balesRaw.find(b => 
+                String(b.baleNo || "").trim().toLowerCase() === baleIdxStr.toLowerCase()
+            );
+        }
+
+        if (!bale) {
+            alert(`Roll/Bale "${baleIdxStr}" not found for item #${itemIdx} in ${docNo}.`);
+            return;
+        }
+
         const qty = parseFloat(bale.qty);
-        const rollNo = bale.baleNo || `Roll-${baleIdx}`;
+        const rollNo = bale.baleNo || `Roll-${baleIdxStr}`;
 
         // Now find matching Fabric Item ID
         const fabricId = String(docItem.itemId).trim();
