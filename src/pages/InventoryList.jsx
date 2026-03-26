@@ -106,54 +106,57 @@ const InventoryList = () => {
         return items.map(item => {
             const opening = parseFloat(item.openingStock || 0);
 
-            // 1. Inward from Challans
+            // 1. Inward from Challans (JSONB: itemId/item_id)
             const inwardFromChallans = challans.reduce((sum, challan) => {
-                const itemEntry = challan.items?.find(i => i.itemId === item.id);
+                const itemEntry = challan.items?.find(i => String(i.itemId || i.item_id) === String(item.id) || i.item_name?.trim() === item.name?.trim());
                 return sum + (itemEntry ? parseFloat(itemEntry.quantity || 0) : 0);
             }, 0);
 
             // 2. Inward from Direct Invoices (No Challan linked)
-            // If an invoice has no challanIds, it's considered a direct inward
             const inwardFromDirectInvoices = invoices.reduce((sum, inv) => {
                 const hasChallan = inv.challanIds && inv.challanIds.length > 0;
                 const challanNoEmpty = !inv.challanNo || inv.challanNo === 'None' || inv.challanNo === 'N/A';
 
                 if (!hasChallan || challanNoEmpty) {
-                    const itemEntry = inv.items?.find(i => i.itemId === item.id);
-                    return sum + (itemEntry ? parseFloat(itemEntry.qty || 0) : 0);
+                    const itemEntry = inv.items?.find(i => String(i.itemId || i.item_id) === String(item.id) || i.item_name?.trim() === item.name?.trim());
+                    return sum + (itemEntry ? parseFloat(itemEntry.quantity || itemEntry.qty || 0) : 0);
                 }
                 return sum;
             }, 0);
 
             const totalInward = inwardFromChallans + inwardFromDirectInvoices;
 
-            // 3. Outward from Outward Challans
+            // 3. Outward from Outward Challans (JSONB: itemId/item_id)
             const outwardFromChallans = outwardChallans.reduce((sum, challan) => {
-                const itemEntry = challan.items?.find(i => i.itemId === item.id);
+                const itemEntry = challan.items?.find(i => String(i.itemId || i.item_id) === String(item.id) || i.item_name?.trim() === item.name?.trim());
                 if (!itemEntry) return sum;
 
+                let qty = 0;
                 if (challan.purpose === 'Fabric Return') {
-                    return sum + (parseFloat(itemEntry.quantity) || 0);
+                    qty = parseFloat(itemEntry.quantity) || 0;
                 } else {
                     const SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL', '6XL', '7XL'];
-                    const rowTotal = SIZES.reduce((s, size) => s + (parseInt(itemEntry[size]) || 0), 0);
-                    return sum + rowTotal;
+                    qty = SIZES.reduce((s, size) => s + (parseInt(itemEntry[size]) || 0), 0);
+                    if (qty === 0) qty = parseFloat(itemEntry.quantity || 0); // Fallback
                 }
+                return sum + qty;
             }, 0);
 
-            // 4. Outward from Material Issues (Trims/Accessories issued to workers)
+            // 4. Outward from Material Issues (Children: item_id/itemId)
             const outwardFromMaterialIssues = materialIssues.reduce((sum, issue) => {
-                const itemEntries = issue.material_issue_items?.filter(i => i.item_name === item.name) || [];
-                const issueQty = itemEntries.reduce((s, i) => s + (parseFloat(i.qty) || 0), 0);
+                const itemEntries = issue.material_issue_items?.filter(i => 
+                    String(i.item_id || i.itemId) === String(item.id) || i.item_name?.trim() === item.name?.trim()
+                ) || [];
+                const issueQty = itemEntries.reduce((s, i) => s + (parseFloat(i.qty || i.quantity || 0)), 0);
                 return sum + issueQty;
             }, 0);
 
-            // 5. Outward from Fabric Issues (Fabric sent to Cutting)
+            // 5. Outward from Fabric Issues (Children: item_id/itemId)
             const outwardFromFabricIssues = fabricIssues.reduce((sum, issue) => {
                 const itemEntries = issue.fabric_issue_items?.filter(i =>
-                    String(i.item_id) === String(item.id) || i.item_name?.trim() === item.name?.trim()
+                    String(i.item_id || i.itemId) === String(item.id) || i.item_name?.trim() === item.name?.trim()
                 ) || [];
-                const issueQty = itemEntries.reduce((s, i) => s + (parseFloat(i.quantity) || 0), 0);
+                const issueQty = itemEntries.reduce((s, i) => s + (parseFloat(i.quantity || i.qty || 0)), 0);
                 return sum + issueQty;
             }, 0);
 

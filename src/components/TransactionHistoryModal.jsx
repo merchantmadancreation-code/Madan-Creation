@@ -6,27 +6,28 @@ import { format } from 'date-fns';
 const TransactionHistoryModal = ({ isOpen, onClose, item }) => {
     const { challans, inwardInvoices, outwardChallans, materialIssues, fabricIssues, purchaseOrders, suppliers, invoices } = usePurchaseOrder();
 
-    const transactions = useMemo(() => {
-        if (!item) return [];
+    const { transactions, totals } = useMemo(() => {
+        if (!item) return { transactions: [], totals: { in: 0, out: 0, balance: 0 } };
 
         const allTrans = [];
 
         // 1. Opening Balance
-        if (parseFloat(item.openingStock) > 0) {
+        const opening = parseFloat(item.openingStock || 0);
+        if (opening > 0) {
             allTrans.push({
                 date: item.created_at || new Date(0).toISOString(),
                 type: 'Opening',
                 id: 'OPEN',
                 party: 'Initial Stock',
-                in: parseFloat(item.openingStock),
+                in: opening,
                 out: 0,
                 department: 'Store'
             });
         }
 
-        // 2. Inwards from Challans
+        // 2. Inwards from Challans (JSONB items: itemId, quantity)
         challans.forEach(c => {
-            const entry = c.items?.find(i => String(i.itemId) === String(item.id));
+            const entry = c.items?.find(i => String(i.itemId || i.item_id) === String(item.id));
             if (entry) {
                 allTrans.push({
                     date: c.date || c.created_at,
@@ -40,19 +41,19 @@ const TransactionHistoryModal = ({ isOpen, onClose, item }) => {
             }
         });
 
-        // 3. Inwards from Direct Invoices
+        // 3. Inwards from Direct Invoices (JSONB items: itemId, quantity)
         invoices.forEach(inv => {
             const hasChallan = inv.challanIds && inv.challanIds.length > 0;
             const challanNoEmpty = !inv.challanNo || inv.challanNo === 'None' || inv.challanNo === 'N/A';
             if (!hasChallan || challanNoEmpty) {
-                const entry = inv.items?.find(i => String(i.itemId) === String(item.id));
+                const entry = inv.items?.find(i => String(i.itemId || i.item_id) === String(item.id));
                 if (entry) {
                     allTrans.push({
                         date: inv.date || inv.created_at,
                         type: 'GRN (Direct)',
                         id: inv.invoiceNo || inv.grnNo || 'N/A',
                         party: suppliers.find(s => s.id === inv.supplierId)?.name || 'Supplier',
-                        in: parseFloat(entry.qty || 0),
+                        in: parseFloat(entry.quantity || entry.qty || 0),
                         out: 0,
                         department: 'Store Inward'
                     });
@@ -60,9 +61,9 @@ const TransactionHistoryModal = ({ isOpen, onClose, item }) => {
             }
         });
 
-        // 4. Outwards from Outward Challans
+        // 4. Outwards from Outward Challans (JSONB items: itemId, quantity OR Size Qty)
         outwardChallans.forEach(oc => {
-            const entry = oc.items?.find(i => String(i.itemId) === String(item.id));
+            const entry = oc.items?.find(i => String(i.itemId || i.item_id) === String(item.id));
             if (entry) {
                 let qty = 0;
                 if (oc.purpose === 'Fabric Return') {
@@ -70,6 +71,7 @@ const TransactionHistoryModal = ({ isOpen, onClose, item }) => {
                 } else {
                     const SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL', '6XL', '7XL'];
                     qty = SIZES.reduce((s, size) => s + (parseInt(entry[size]) || 0), 0);
+                    if (qty === 0) qty = parseFloat(entry.quantity || 0); // Fallback
                 }
 
                 allTrans.push({
@@ -84,10 +86,10 @@ const TransactionHistoryModal = ({ isOpen, onClose, item }) => {
             }
         });
 
-        // 5. Outwards from Material Issues
+        // 5. Outwards from Material Issues (Children: item_id, qty)
         materialIssues.forEach(iss => {
             const entries = iss.material_issue_items?.filter(i => 
-                String(i.item_id) === String(item.id) || i.item_name?.trim() === item.name?.trim()
+                String(i.item_id || i.itemId) === String(item.id) || i.item_name?.trim() === item.name?.trim()
             ) || [];
             
             entries.forEach(entry => {
@@ -97,16 +99,16 @@ const TransactionHistoryModal = ({ isOpen, onClose, item }) => {
                     id: iss.issue_no || 'N/A',
                     party: iss.worker?.name || 'Worker',
                     in: 0,
-                    out: parseFloat(entry.qty || 0),
+                    out: parseFloat(entry.qty || entry.quantity || 0),
                     department: 'Production'
                 });
             });
         });
 
-        // 6. Outwards from Fabric Issues
+        // 6. Outwards from Fabric Issues (Children: item_id, quantity)
         fabricIssues.forEach(iss => {
             const entries = iss.fabric_issue_items?.filter(i => 
-                String(i.item_id) === String(item.id) || i.item_name?.trim() === item.name?.trim()
+                String(i.item_id || i.itemId) === String(item.id) || i.item_name?.trim() === item.name?.trim()
             ) || [];
             
             entries.forEach(entry => {
@@ -116,7 +118,7 @@ const TransactionHistoryModal = ({ isOpen, onClose, item }) => {
                     id: iss.issue_no || 'N/A',
                     party: `Style: ${iss.style_no || 'N/A'}`,
                     in: 0,
-                    out: parseFloat(entry.quantity || 0),
+                    out: parseFloat(entry.quantity || entry.qty || 0),
                     department: 'Cutting'
                 });
             });
@@ -125,12 +127,27 @@ const TransactionHistoryModal = ({ isOpen, onClose, item }) => {
         // Sort by date then type
         allTrans.sort((a, b) => new Date(a.date) - new Date(b.date));
 
-        // Calculate Running Balance
-        let balance = 0;
-        return allTrans.map(t => {
-            balance += (t.in - t.out);
-            return { ...t, balance };
-        }).reverse(); // Latest first for display
+        // Calculate Totals and Running Balance
+        let totalIn = 0;
+        let totalOut = 0;
+        let runningBalance = 0;
+
+        const transactionsWithBalance = allTrans.map(t => {
+            totalIn += t.in;
+            totalOut += t.out;
+            runningBalance += (t.in - t.out);
+            return { ...t, balance: runningBalance };
+        });
+
+        return { 
+            transactions: transactionsWithBalance.reverse(), 
+            totals: { 
+                in: totalIn - opening, // Total Inward excluding opening
+                out: totalOut,
+                balance: runningBalance,
+                opening: opening
+            } 
+        };
 
     }, [item, challans, invoices, outwardChallans, materialIssues, fabricIssues, suppliers]);
 
@@ -159,19 +176,19 @@ const TransactionHistoryModal = ({ isOpen, onClose, item }) => {
                 <div className="grid grid-cols-4 gap-px bg-sage-100 border-b border-sage-100">
                     <div className="bg-white p-4 text-center">
                         <p className="text-[10px] text-sage-400 font-bold uppercase tracking-wider mb-1">Opening Stock</p>
-                        <p className="text-lg font-black text-sage-800">{parseFloat(item.openingStock).toFixed(2)}</p>
+                        <p className="text-lg font-black text-sage-800">{totals.opening.toFixed(2)}</p>
                     </div>
                     <div className="bg-white p-4 text-center">
                         <p className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider mb-1">Total Inward</p>
-                        <p className="text-lg font-black text-indigo-600">+{item.inward?.toFixed(2) || '0.00'}</p>
+                        <p className="text-lg font-black text-indigo-600">+{totals.in.toFixed(2)}</p>
                     </div>
                     <div className="bg-white p-4 text-center">
                         <p className="text-[10px] text-rose-400 font-bold uppercase tracking-wider mb-1">Total Outward</p>
-                        <p className="text-lg font-black text-rose-500">-{item.outward?.toFixed(2) || '0.00'}</p>
+                        <p className="text-lg font-black text-rose-500">-{totals.out.toFixed(2)}</p>
                     </div>
-                    <div className="bg-white p-4 text-center bg-sage-50/50">
+                    <div className="bg-white p-4 text-center bg-sage-50/50 border-l-4 border-sage-800">
                         <p className="text-[10px] text-sage-500 font-bold uppercase tracking-wider mb-1">Current Balance</p>
-                        <p className="text-lg font-black text-sage-900">{item.current?.toFixed(2) || '0.00'}</p>
+                        <p className="text-lg font-black text-sage-900">{totals.balance.toFixed(2)}</p>
                     </div>
                 </div>
 
