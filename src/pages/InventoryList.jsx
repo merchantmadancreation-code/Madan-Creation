@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { usePurchaseOrder } from '../context/PurchaseOrderContext';
 import { Search, Filter, Warehouse, Plus, Download, Upload, FileSpreadsheet, Printer, ScanBarcode, History } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { generateInventoryTemplate, exportInventoryToExcel } from '../utils/export';
+import { generateInventoryTemplate, exportInventoryToExcel, exportDetailedInventoryToExcel } from '../utils/export';
 import { parseInventoryExcel } from '../utils/import';
 import BarcodeModal from '../components/BarcodeModal';
 import TransactionHistoryModal from '../components/TransactionHistoryModal';
@@ -288,6 +288,9 @@ const InventoryList = () => {
                             </button>
                             <button onClick={generateInventoryTemplate} className="btn-secondary px-3 py-1.5 flex items-center gap-1.5 text-sm bg-white border border-sage-200 rounded-lg hover:bg-sage-50 shadow-xs transition-all">
                                 <FileSpreadsheet className="w-4 h-4" /> Template
+                            </button>
+                            <button onClick={() => exportDetailedInventoryToExcel(inventory, { challans, invoices, outwardChallans, materialIssues, fabricIssues, suppliers })} className="btn-secondary px-3 py-1.5 flex items-center gap-1.5 text-sm bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-lg hover:bg-indigo-100 shadow-xs transition-all font-bold">
+                                <FileSpreadsheet className="w-4 h-4" /> Detailed Report
                             </button>
                             <button onClick={() => exportInventoryToExcel(inventory)} className="btn-secondary px-3 py-1.5 flex items-center gap-1.5 text-sm bg-white border border-sage-200 rounded-lg hover:bg-sage-50 shadow-xs transition-all">
                                 <Download className="w-4 h-4" /> Export

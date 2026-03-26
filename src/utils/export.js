@@ -840,3 +840,178 @@ export const generateStylePDF = (style) => {
         alert("Failed to generate PDF");
     }
 };
+
+export const exportDetailedInventoryToExcel = (items, { challans, invoices, outwardChallans, materialIssues, fabricIssues, suppliers }) => {
+    try {
+        const reportData = [];
+
+        (items || []).forEach(item => {
+            const allTrans = [];
+
+            // 1. Opening Balance
+            const opening = parseFloat(item.openingStock || item.opening || 0);
+            if (opening > 0) {
+                allTrans.push({
+                    date: item.created_at || new Date(0).toISOString(),
+                    type: 'Opening',
+                    id: 'OPEN',
+                    party: 'Initial Stock',
+                    in: opening,
+                    out: 0,
+                    department: 'Store'
+                });
+            }
+
+            // 2. Inwards from Challans
+            challans.forEach(c => {
+                const entry = c.items?.find(i => String(i.itemId || i.item_id) === String(item.id) || i.item_name?.trim() === item.name?.trim());
+                if (entry) {
+                    allTrans.push({
+                        date: c.date || c.created_at,
+                        type: 'GRN (Challan)',
+                        id: c.challanNo || c.grnNo || 'N/A',
+                        party: suppliers.find(s => s.id === c.supplierId)?.name || 'Supplier',
+                        in: parseFloat(entry.quantity || 0),
+                        out: 0,
+                        department: 'Store Inward'
+                    });
+                }
+            });
+
+            // 3. Inwards from Direct Invoices
+            invoices.forEach(inv => {
+                const hasChallan = inv.challanIds && inv.challanIds.length > 0;
+                const challanNoEmpty = !inv.challanNo || inv.challanNo === 'None' || inv.challanNo === 'N/A';
+                if (!hasChallan || challanNoEmpty) {
+                    const entry = inv.items?.find(i => String(i.itemId || i.item_id) === String(item.id) || i.item_name?.trim() === item.name?.trim());
+                    if (entry) {
+                        allTrans.push({
+                            date: inv.date || inv.created_at,
+                            type: 'GRN (Direct)',
+                            id: inv.invoiceNo || inv.grnNo || 'N/A',
+                            party: suppliers.find(s => s.id === inv.supplierId)?.name || 'Supplier',
+                            in: parseFloat(entry.quantity || entry.qty || 0),
+                            out: 0,
+                            department: 'Store Inward'
+                        });
+                    }
+                }
+            });
+
+            // 4. Outwards from Outward Challans
+            outwardChallans.forEach(oc => {
+                const entry = oc.items?.find(i => String(i.itemId || i.item_id) === String(item.id) || i.item_name?.trim() === item.name?.trim());
+                if (entry) {
+                    let qty = 0;
+                    if (oc.purpose === 'Fabric Return') {
+                        qty = parseFloat(entry.quantity) || 0;
+                    } else {
+                        const SIZES = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL', '6XL', '7XL'];
+                        qty = SIZES.reduce((s, size) => s + (parseInt(entry[size]) || 0), 0);
+                        if (qty === 0) qty = parseFloat(entry.quantity || 0); // Fallback
+                    }
+
+                    allTrans.push({
+                        date: oc.date || oc.created_at,
+                        type: oc.purpose || 'Outward Challan',
+                        id: oc.outChallanNo || oc.challanNo || 'N/A',
+                        party: suppliers.find(s => s.id === oc.supplierId)?.name || 'Recipient',
+                        in: 0,
+                        out: qty,
+                        department: 'Store Outward'
+                    });
+                }
+            });
+
+            // 5. Outwards from Material Issues
+            materialIssues.forEach(iss => {
+                const entries = iss.material_issue_items?.filter(i => 
+                    String(i.item_id || i.itemId) === String(item.id) || i.item_name?.trim() === item.name?.trim()
+                ) || [];
+                
+                entries.forEach(entry => {
+                    allTrans.push({
+                        date: iss.issue_date || iss.created_at,
+                        type: 'Material Issue',
+                        id: iss.issue_no || 'N/A',
+                        party: iss.worker?.name || 'Worker',
+                        in: 0,
+                        out: parseFloat(entry.qty || entry.quantity || 0),
+                        department: 'Production'
+                    });
+                });
+            });
+
+            // 6. Outwards from Fabric Issues
+            fabricIssues.forEach(iss => {
+                const entries = iss.fabric_issue_items?.filter(i => 
+                    String(i.item_id || i.itemId) === String(item.id) || i.item_name?.trim() === item.name?.trim()
+                ) || [];
+                
+                entries.forEach(entry => {
+                    allTrans.push({
+                        date: iss.created_at,
+                        type: 'Fabric Issue',
+                        id: iss.issue_no || 'N/A',
+                        party: `Style: ${iss.style_no || 'N/A'}`,
+                        in: 0,
+                        out: parseFloat(entry.quantity || entry.qty || 0),
+                        department: 'Cutting'
+                    });
+                });
+            });
+
+            // Sort item-wise transactions
+            allTrans.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            // Flatten with running balance
+            let balance = 0;
+            allTrans.forEach((t, idx) => {
+                balance += (t.in - t.out);
+                reportData.push({
+                    'Item Name': item.name,
+                    'Fabric Code': item.fabricCode || '-',
+                    'Category': item.materialType || '-',
+                    'Date': new Date(t.date).toLocaleDateString('en-GB'),
+                    'Type': t.type,
+                    'Trans ID': t.id,
+                    'Party / Dept': t.party,
+                    'Department': t.department,
+                    'In (+)': t.in > 0 ? t.in : '',
+                    'Out (-)': t.out > 0 ? t.out : '',
+                    'Balance': balance.toFixed(2)
+                });
+            });
+            
+            // Add an empty row for readability between items
+            if (allTrans.length > 0) {
+                reportData.push({});
+            }
+        });
+
+        if (reportData.length === 0) {
+            alert("No transaction data found to export.");
+            return;
+        }
+
+        const ws = XLSX.utils.json_to_sheet(reportData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Detailed Inventory");
+
+        // Simple column auto-width
+        const objectMaxLength = [];
+        reportData.forEach(obj => {
+            Object.values(obj).forEach((v, i) => {
+                let len = (v ? v.toString().length : 0);
+                if (len > (objectMaxLength[i] || 0)) objectMaxLength[i] = len;
+            });
+        });
+        ws['!cols'] = objectMaxLength.map(w => ({ wch: w + 4 }));
+
+        XLSX.writeFile(wb, `Detailed_Inventory_Report_${new Date().toISOString().split('T')[0]}.xlsx`);
+
+    } catch (error) {
+        console.error("Detailed Export Error:", error);
+        alert("Failed to export detailed report.");
+    }
+};
