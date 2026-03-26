@@ -508,7 +508,7 @@ export const generatePDF = async (po, print = false, suppliers = []) => {
                 
                 doc.addImage(cleanImg, imgFormat, line2X + 1 + offsetX, gridY + 1 + offsetY, finalW, finalH, undefined, 'FAST');
             } catch (e) {
-                console.warn("Could not add image rendering", e);
+                console.error("PDF Image Error:", e);
             }
         }
 
