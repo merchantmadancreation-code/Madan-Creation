@@ -11,12 +11,11 @@ envFile.split('\n').forEach(line => {
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-async function checkCols() {
-    const { data, error } = await supabase.from('styles').select('*').limit(1);
-    if (error) {
-        console.error(error);
-    } else {
-        console.log("Columns:", Object.keys(data[0]));
+async function checkGST() {
+    const { data } = await supabase.from('purchase_orders').select('poNumber, items, commercials').eq('poNumber', 'MCPO-00009').single();
+    if (data) {
+        console.log("Items:", JSON.stringify(data.items, null, 2));
+        console.log("Calculations:", JSON.stringify(data.commercials?.calculations, null, 2));
     }
 }
-checkCols();
+checkGST();

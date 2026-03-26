@@ -345,9 +345,9 @@ export const generatePDF = async (po, print = false, suppliers = []) => {
         let currentY = margin;
 
         // --- 1. Top Header (Buyer Info) ---
-        const compName = getVal(normalizedPO.buyerDetails?.companyName, "THREAD BUCKET STUDIO LLP").toUpperCase();
-        const compAddress = getVal(normalizedPO.buyerDetails?.address, "A/15-4 BESIDE SAIBABA TEMPLE, ROAD NO.8, UDHANA UDHYOG NAGAR - 394210").toUpperCase();
-        const compGSTIN = getVal(normalizedPO.buyerDetails?.gstin, "24AAKFT0982E1Z6").toUpperCase();
+        const compName = getVal(normalizedPO.buyerDetails?.companyName, "MADAN CREATION").toUpperCase();
+        const compAddress = getVal(normalizedPO.buyerDetails?.address, "138-139, ASHID NAGAR, OXFORD INTERNATIONAL PUBLIC SCHOOL, SANGANER, JAIPUR - 302239").toUpperCase();
+        const compGSTIN = getVal(normalizedPO.buyerDetails?.gstin, "08CPAPS4393K1ZB").toUpperCase();
 
         doc.setFont("helvetica", "bold");
         doc.setFontSize(14);
@@ -465,38 +465,48 @@ export const generatePDF = async (po, print = false, suppliers = []) => {
 
         // -- Col 3: Attached Image --
         let displayImg = null;
-        if (normalizedPO.attachment && typeof normalizedPO.attachment === 'string' && normalizedPO.attachment.startsWith('data:image')) {
-            displayImg = normalizedPO.attachment;
-        } else if (normalizedPO.items && normalizedPO.items.length > 0) {
-            // Fetch style image from Supabase if not attached directly to PO
-            const firstItem = normalizedPO.items[0];
-            const searchStyleNo = firstItem.styleNo || firstItem.articleCode || firstItem.sku;
-            if (searchStyleNo) {
-                try {
-                    const { data } = await supabase
-                        .from('styles')
-                        .select('image')
-                        .or(`styleNo.eq."${searchStyleNo}",articleCode.eq."${searchStyleNo}"`)
-                        .not('image', 'is', null)
-                        .limit(1)
-                        .single();
-                        
-                    if (data && data.image) {
-                        displayImg = data.image;
-                    }
-                } catch (imgFetchErr) {
-                    console.warn("Could not fetch style image for PDF", imgFetchErr);
-                }
-            }
+        
+        // Check root attachment and commercial attachment. Avoid empty arrays.
+        const poAttach = normalizedPO.attachment;
+        const commAttach = comm.attachment;
+        let attachment = (poAttach && (!Array.isArray(poAttach) || poAttach.length > 0)) ? poAttach : commAttach;
+        
+        if (Array.isArray(attachment) && attachment.length > 0) {
+            attachment = attachment[0];
+        }
+
+        if (attachment && typeof attachment === 'string' && attachment.startsWith('data:image')) {
+            displayImg = attachment;
         }
 
         if (displayImg && typeof displayImg === 'string' && displayImg.startsWith('data:image')) {
             try {
-                // Determine layout: Fill box preserving some margin
-                const imgFormat = displayImg.includes('image/png') ? 'PNG' : (displayImg.includes('image/webp') ? 'WEBP' : 'JPEG');
+                // Clean the data URL from any potential whitespace/newlines that break jsPDF
+                const cleanImg = displayImg.replace(/\s/g, '');
+                
+                // Determine format
+                const imgFormat = cleanImg.includes('image/png') ? 'PNG' : (cleanImg.includes('image/webp') ? 'WEBP' : 'JPEG');
+                
+                // Get original dimensions to maintain aspect ratio (auto-adjust)
+                const imgProps = doc.getImageProperties(cleanImg);
+                const ratio = imgProps.width / imgProps.height;
+                
                 const imgBoxW = col3W - 2;
                 const imgBoxH = gridH - 2;
-                doc.addImage(displayImg, imgFormat, line2X + 1, gridY + 1, imgBoxW, imgBoxH, undefined, 'FAST');
+                
+                let finalW = imgBoxW;
+                let finalH = imgBoxW / ratio;
+                
+                if (finalH > imgBoxH) {
+                    finalH = imgBoxH;
+                    finalW = imgBoxH * ratio;
+                }
+                
+                // Center within the box
+                const offsetX = (imgBoxW - finalW) / 2;
+                const offsetY = (imgBoxH - finalH) / 2;
+                
+                doc.addImage(cleanImg, imgFormat, line2X + 1 + offsetX, gridY + 1 + offsetY, finalW, finalH, undefined, 'FAST');
             } catch (e) {
                 console.warn("Could not add image rendering", e);
             }
@@ -505,10 +515,15 @@ export const generatePDF = async (po, print = false, suppliers = []) => {
         currentY = gridY + gridH + 4; // Space below grid
 
         // --- 3. Items Table ---
-        const tableColumn = ["#", "SKU Code / Style", "Category / PO", "Colour / Desc", "Qty.", "Section/UOM", "Rate", "Amount"];
+        const tableColumn = ["#", "SKU Code / Style", "Category / PO", "Colour / Desc", "Qty.", "UOM", "Rate", "GST (%)", "Amount"];
         const tableRows = [];
         let totalQty = 0;
-        let itemsTotal = 0;
+        let runningTotal = 0;
+
+        const calc = normalizedPO.calculations || {};
+        const globalGstRate = (calc.gstAmount && calc.taxableAmount && calc.taxableAmount > 0) 
+            ? Math.round(calc.gstAmount / calc.taxableAmount * 100) 
+            : 12;
 
         if (normalizedPO.items && Array.isArray(normalizedPO.items)) {
             normalizedPO.items.forEach((item, index) => {
@@ -517,7 +532,7 @@ export const generatePDF = async (po, print = false, suppliers = []) => {
                 const amount = Number(item.amount) || (qty * rate);
                 
                 totalQty += qty;
-                itemsTotal += amount;
+                runningTotal += amount;
                 
                 let desc = item.description || "";
                 if(item.fabricDetails) desc += " " + item.fabricDetails;
@@ -531,22 +546,18 @@ export const generatePDF = async (po, print = false, suppliers = []) => {
                     qty,
                     item.uom || item.unit || '-',
                     rate.toFixed(2),
+                    globalGstRate + "%",
                     amount.toFixed(2)
                 ]);
             });
         }
         
-        // Take commercial calculations if items array is missing/discrepant
-        if (normalizedPO.calculations && normalizedPO.calculations.itemsTotal > 0) {
-            itemsTotal = normalizedPO.calculations.itemsTotal;
-        }
-
-        // Add Total Row
+        // Totals Footer Rows in Table
         tableRows.push([
             { content: 'Total', colSpan: 4, styles: { halign: 'center', fontStyle: 'bold' } },
             { content: totalQty.toString(), styles: { fontStyle: 'bold', halign: 'center' } },
-            { content: '', colSpan: 2 },
-            { content: itemsTotal.toFixed(2), styles: { fontStyle: 'bold', halign: 'right' } }
+            { content: '', colSpan: 3 },
+            { content: runningTotal.toFixed(2), styles: { fontStyle: 'bold', halign: 'right' } }
         ]);
 
         autoTable(doc, {
@@ -556,24 +567,47 @@ export const generatePDF = async (po, print = false, suppliers = []) => {
             theme: 'grid',
             headStyles: { fillColor: [200, 200, 200], textColor: 0, lineWidth: 0.1, lineColor: 150, fontStyle: 'bold', fontSize: 8 },
             bodyStyles: { lineWidth: 0.1, lineColor: 150, textColor: 0, fontSize: 8 },
-            footStyles: { fillColor: [240, 240, 240], textColor: 0, fontStyle: 'bold' },
             columnStyles: {
                 0: { cellWidth: 8, halign: 'center' },
-                1: { cellWidth: 32 },
-                2: { cellWidth: 25 },
-                3: { cellWidth: 44 },
+                1: { cellWidth: 28 },
+                2: { cellWidth: 24 },
+                3: { cellWidth: 40 },
                 4: { cellWidth: 15, halign: 'center' },
-                5: { cellWidth: 22, halign: 'center' },
-                6: { cellWidth: 20, halign: 'right' },
-                7: { cellWidth: 24, halign: 'right' },
+                5: { cellWidth: 15, halign: 'center' },
+                6: { cellWidth: 18, halign: 'right' },
+                7: { cellWidth: 15, halign: 'center' },
+                8: { cellWidth: 22, halign: 'right' },
             },
             margin: { left: margin, right: margin },
             didDrawPage: (data) => { currentY = data.cursor.y; }
         });
 
         if (doc.lastAutoTable && doc.lastAutoTable.finalY) {
-            currentY = doc.lastAutoTable.finalY + 4;
+            currentY = doc.lastAutoTable.finalY + 2;
         }
+
+        // --- 3.1 Detailed Calculations Section ---
+        const finalCalc = normalizedPO.calculations || {};
+        const subtotal = runningTotal;
+        const gstAmt = finalCalc.gstAmount || (subtotal * globalGstRate / 100);
+        const grandTotal = finalCalc.finalTotal || (subtotal + gstAmt);
+
+        const calcX = pageWidth - margin - 60;
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "normal");
+        
+        doc.text("Sub Total:", calcX, currentY);
+        doc.text(subtotal.toFixed(2), pageWidth - margin, currentY, { align: 'right' });
+        currentY += 5;
+        
+        doc.text(`GST (${globalGstRate}%):`, calcX, currentY);
+        doc.text(gstAmt.toFixed(2), pageWidth - margin, currentY, { align: 'right' });
+        currentY += 5;
+        
+        doc.setFont("helvetica", "bold");
+        doc.text("Grand Total:", calcX, currentY);
+        doc.text(grandTotal.toFixed(2), pageWidth - margin, currentY, { align: 'right' });
+        currentY += 8;
 
         // --- 4. Terms and conditions ---
         doc.setFont("helvetica", "bold");
@@ -592,20 +626,23 @@ export const generatePDF = async (po, print = false, suppliers = []) => {
 
         // Default or Custom Terms
         let mainTerms = normalizedPO.terms?.generalTerms;
-        const defaultTerms = `Note : Any delay in delivery of goods as per the PO accepted by Licensee will attract discount of 3% for 1st week & 3% for 2nd week and in 3rd week PO will be automatically stands cancelled along with a debit note of 10% on the value of actual order quantity.
+        const defaultTerms = `1. This purchase order will be deemed accepted upon receipt of written confirmation from the vendor or upon commencement of supply.
+2. All raw materials must fully conform to the specifications, quality, GSM, color, and standards stated in the PO.
+3. Materials must match approved samples or quality standards submitted prior to bulk supply.
+4. Quantity tolerances should not exceed ±5%, unless otherwise agreed in writing.
+5. Rates stated in the PO are firm and include all applicable taxes and charges, unless otherwise specified.
+6. Delivery must be completed within the stipulated time, and time is an essential part of the contract.
+7. Delays in delivery may result in a penalty being imposed by the buyer at its discretion or the PO being cancelled.
+8. The buyer reserves the right to inspect the materials before dispatch or upon receipt.
+9. Rejected or defective materials must be replaced immediately at the vendor's expense.
+10. Proper packing and labeling must be ensured to prevent damage during transit.
+11. Payment will be processed according to agreed credit terms, subject to material acceptance.
+12. Any rate changes must be approved in writing before dispatch.
+13. The vendor must comply with all applicable legal and statutory requirements.
+14. If the agreed terms are not met, the buyer reserves the right to cancel the PO.
+15. Any disputes will be subject to the jurisdiction of the designated local court.`;
 
-1) Delivery date shall be the date as specified in the PO herein & Delivery shall mean delivery of goods to the preferred transporter of the company with the Valid LR copy attached herein.
-2) Delivery date should be strictly adhered to and early delivery will be accepted maximum 7 days prior to delivery date. No goods will be inspected and shall be delivered more than 15 days prior at the warehouse.
-3) Additional goods will be accepted only as per the PO quantity criteria. This is applicable to size ratio.
-4) Consignment to be sent with proper LR/Docket on which invoice number & number of boxes/bales against each invoice should be clearly mentioned. Packing slip to be pasted on each box/package.
-5) If consignment of multiple PO send in one LR, we require proper identification of boxes - (LR #, Vendor Name, PO #, Box # etc.)
-6) Any addition, alteration, modification, variation and amendment or other changes in this order will not be valid unless confirmed by the Licensor in writing.
-7) Bills to be submitted in Duplicate & should bear the Licensee's GST registration number of the supplying location.
-8) Main Label, Wash care, Tags, Disclaimer Tags to be procured from nominated supplier as applicable upon payment.
-9) This Purchase order and its interpretation, enforcement, application, validity, and effects are subject to the applicable laws.
-10) Order has to be completed in maximum 2 parts. And the first part should contain atleast 50% of the order quantity.`;
-
-        const finalTerms = (mainTerms && mainTerms.trim().length > 10) ? mainTerms : defaultTerms;
+        const finalTerms = (mainTerms && mainTerms.toString().trim().length > 0) ? mainTerms : defaultTerms;
         const termsLinesArray = finalTerms.split('\n');
 
         doc.setFontSize(8);

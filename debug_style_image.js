@@ -11,12 +11,18 @@ envFile.split('\n').forEach(line => {
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-async function checkCols() {
-    const { data, error } = await supabase.from('styles').select('*').limit(1);
+async function checkStyle() {
+    const styleNo = 'JNE4033';
+    console.log(`Checking style ${styleNo}...`);
+    const { data, error } = await supabase
+        .from('styles')
+        .select('styleNo, image')
+        .eq('styleNo', styleNo);
+    
     if (error) {
         console.error(error);
     } else {
-        console.log("Columns:", Object.keys(data[0]));
+        console.log("Result:", JSON.stringify(data, null, 2));
     }
 }
-checkCols();
+checkStyle();

@@ -11,12 +11,23 @@ envFile.split('\n').forEach(line => {
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-async function checkCols() {
-    const { data, error } = await supabase.from('styles').select('*').limit(1);
+async function checkStyles() {
+    console.log("Fetching styles with images...");
+    const { data, error } = await supabase
+        .from('styles')
+        .select('styleNo, image')
+        .not('image', 'is', null)
+        .limit(10);
+    
     if (error) {
         console.error(error);
     } else {
-        console.log("Columns:", Object.keys(data[0]));
+        const result = data.map(s => ({
+            styleNo: s.styleNo,
+            hasImage: !!s.image,
+            imgPreview: s.image ? s.image.substring(0, 50) + "..." : "null"
+        }));
+        console.log("Sample Styles:", JSON.stringify(result, null, 2));
     }
 }
-checkCols();
+checkStyles();
