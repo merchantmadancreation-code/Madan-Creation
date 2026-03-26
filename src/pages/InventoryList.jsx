@@ -1,10 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { usePurchaseOrder } from '../context/PurchaseOrderContext';
-import { Search, Filter, Warehouse, Plus, Download, Upload, FileSpreadsheet, Printer, ScanBarcode } from 'lucide-react';
+import { Search, Filter, Warehouse, Plus, Download, Upload, FileSpreadsheet, Printer, ScanBarcode, History } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { generateInventoryTemplate, exportInventoryToExcel } from '../utils/export';
 import { parseInventoryExcel } from '../utils/import';
 import BarcodeModal from '../components/BarcodeModal';
+import TransactionHistoryModal from '../components/TransactionHistoryModal';
 
 const InventoryList = () => {
     const { items, challans, outwardChallans, invoices, materialIssues, fabricIssues, suppliers, purchaseOrders, addItem } = usePurchaseOrder();
@@ -13,6 +14,8 @@ const InventoryList = () => {
     const [filterType, setFilterType] = useState('All');
     const [barcodeModalOpen, setBarcodeModalOpen] = useState(false);
     const [selectedItemForBarcode, setSelectedItemForBarcode] = useState(null);
+    const [historyModalOpen, setHistoryModalOpen] = useState(false);
+    const [selectedItemForHistory, setSelectedItemForHistory] = useState(null);
     const [selectedItems, setSelectedItems] = useState([]);
     const fileInputRef = React.useRef(null);
     const navigate = useNavigate();
@@ -69,6 +72,11 @@ const InventoryList = () => {
     const openBarcodeModal = (item) => {
         setSelectedItemForBarcode(item);
         setBarcodeModalOpen(true);
+    };
+
+    const openHistoryModal = (item) => {
+        setSelectedItemForHistory(item);
+        setHistoryModalOpen(true);
     };
 
     const toggleSelectItem = (itemId) => {
@@ -423,13 +431,22 @@ const InventoryList = () => {
                                             {item.current.toFixed(2)}
                                         </td>
                                         <td className="p-3 text-center">
-                                            <button
-                                                onClick={() => openBarcodeModal(item)}
-                                                className="p-1.5 text-sage-400 hover:text-sage-800 hover:bg-sage-100 rounded-lg transition-all"
-                                                title="Print Barcode"
-                                            >
-                                                <ScanBarcode className="w-4 h-4" />
-                                            </button>
+                                            <div className="flex items-center gap-1 justify-center">
+                                                <button
+                                                    onClick={() => openHistoryModal(item)}
+                                                    className="p-1.5 text-sage-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                                                    title="View Transaction History"
+                                                >
+                                                    <History className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => openBarcodeModal(item)}
+                                                    className="p-1.5 text-sage-400 hover:text-sage-800 hover:bg-sage-100 rounded-lg transition-all"
+                                                    title="Print Barcode"
+                                                >
+                                                    <ScanBarcode className="w-4 h-4" />
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))
@@ -450,6 +467,13 @@ const InventoryList = () => {
                 isOpen={barcodeModalOpen}
                 onClose={() => setBarcodeModalOpen(false)}
                 item={selectedItemForBarcode}
+            />
+
+            {/* Transaction History Modal */}
+            <TransactionHistoryModal
+                isOpen={historyModalOpen}
+                onClose={() => setHistoryModalOpen(false)}
+                item={selectedItemForHistory}
             />
         </div>
     );
